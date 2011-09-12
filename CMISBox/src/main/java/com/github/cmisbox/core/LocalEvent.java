@@ -87,8 +87,13 @@ public class LocalEvent implements Delayed {
 
 	@Override
 	public String toString() {
-		return this.typeList + ": " + this.rootPath + " + " + this.name
-				+ (this.newName == null ? "" : " -> " + this.newName);
+		return this.typeList
+				+ ": "
+				+ this.rootPath
+				+ " + "
+				+ this.name
+				+ (!this.typeList.contains(Type.RENAME) ? "" : " -> "
+						+ this.newName);
 	}
 
 }

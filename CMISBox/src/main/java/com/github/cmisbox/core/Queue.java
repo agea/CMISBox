@@ -2,6 +2,7 @@ package com.github.cmisbox.core;
 
 import java.util.Iterator;
 import java.util.concurrent.DelayQueue;
+import java.util.regex.Pattern;
 
 import org.apache.commons.logging.LogFactory;
 
@@ -15,6 +16,8 @@ public class Queue implements Runnable {
 
 	private boolean active = true;
 
+	private Pattern filter;
+
 	private Thread thread;
 
 	private DelayQueue<LocalEvent> delayQueue = new DelayQueue<LocalEvent>();
@@ -25,8 +28,6 @@ public class Queue implements Runnable {
 	}
 
 	public synchronized void add(LocalEvent localEvent) {
-		LogFactory.getLog(this.getClass())
-				.debug("watched event: " + localEvent);
 		if (!this.active) {
 			return;
 		}
@@ -41,11 +42,19 @@ public class Queue implements Runnable {
 			}
 		}
 		this.delayQueue.put(localEvent);
-		LogFactory.getLog(this.getClass()).debug("queued: " + localEvent);
 	}
 
 	public void manageEvent(LocalEvent event) {
 		LogFactory.getLog(this.getClass()).debug("managing: " + event);
+		// linux
+		// - if a file or folder is moved out of a watched folder it is reported
+		// as a rename to null
+		// mac osx
+		// - recursive folder operations (e.g. unzip an archive or move a folder
+		// inside a watched folder) are not reported, only root folder is
+		// reported as create
+		// - folder rename causes children to be notified as deleted (with old
+		// path)
 	}
 
 	public void run() {
