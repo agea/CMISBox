@@ -2,6 +2,7 @@ package com.github.cmisbox.core;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
@@ -113,6 +114,17 @@ public class LocalEvent implements Delayed {
 
 	public void merge(LocalEvent queuedEvent) {
 		this.typeList.addAll(0, queuedEvent.getTypeList());
+		Iterator<Type> i = this.typeList.iterator();
+		Type prev = null;
+		while (i.hasNext()) {
+			LocalEvent.Type type = i.next();
+			if (prev == type) {
+				i.remove();
+			} else {
+				prev = type;
+			}
+		}
+
 		if (this.newName == null) {
 			this.newName = queuedEvent.getNewName();
 		}
