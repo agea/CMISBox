@@ -1,9 +1,11 @@
 package com.github.cmisbox.core;
 
+import java.io.File;
 import java.util.Iterator;
 import java.util.concurrent.DelayQueue;
 import java.util.regex.Pattern;
 
+import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 public class Queue implements Runnable {
@@ -16,7 +18,8 @@ public class Queue implements Runnable {
 
 	private boolean active = true;
 
-	private Pattern filter;
+	// by default do not synch files starting with a dot
+	private Pattern filter = Pattern.compile("$\\..*");
 
 	private Thread thread;
 
@@ -44,8 +47,13 @@ public class Queue implements Runnable {
 		this.delayQueue.put(localEvent);
 	}
 
+	public Pattern getFilter() {
+		return this.filter;
+	}
+
 	public void manageEvent(LocalEvent event) {
-		LogFactory.getLog(this.getClass()).debug("managing: " + event);
+		Log log = LogFactory.getLog(this.getClass());
+		log.debug("managing: " + event);
 		// linux
 		// - if a file or folder is moved out of a watched folder it is reported
 		// as a rename to null
@@ -55,6 +63,18 @@ public class Queue implements Runnable {
 		// reported as create
 		// - folder rename causes children to be notified as deleted (with old
 		// path)
+		try {
+			File f = new File(event.getFullFilename());
+			if (f.isFile() && event.isModified()) {
+				long start = System.currentTimeMillis();
+				String digest = Digester.calculateDigest(event
+						.getFullFilename());
+				log.debug(event.getFullFilename() + " == " + digest + " "
+						+ (System.currentTimeMillis() - start) + "ms");
+			}
+		} catch (Exception e) {
+			log.error(e);
+		}
 	}
 
 	public void run() {
@@ -66,6 +86,10 @@ public class Queue implements Runnable {
 			}
 		}
 
+	}
+
+	public void setFilter(Pattern filter) {
+		this.filter = filter;
 	}
 
 	public void stop() {

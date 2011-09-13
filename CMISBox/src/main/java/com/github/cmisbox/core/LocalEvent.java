@@ -1,5 +1,6 @@
 package com.github.cmisbox.core;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Delayed;
@@ -27,6 +28,9 @@ public class LocalEvent implements Delayed {
 		this.typeList.add(type);
 		this.rootPath = rootPath;
 		this.name = name;
+		if (this.name != null && this.name.endsWith("/")) {
+			this.name = this.name.substring(0, name.length() - 1);
+		}
 	}
 
 	public LocalEvent(Type type, String rootPath, String name, String newName) {
@@ -34,6 +38,13 @@ public class LocalEvent implements Delayed {
 		this.rootPath = rootPath;
 		this.name = name;
 		this.newName = newName;
+		if (this.name != null && this.name.endsWith("/")) {
+			this.name = this.name.substring(0, name.length() - 1);
+		}
+		if (this.newName != null && this.newName.endsWith("/")) {
+			this.newName = this.newName.substring(0, name.length() - 1);
+		}
+
 	}
 
 	public int compareTo(Delayed o) {
@@ -56,6 +67,23 @@ public class LocalEvent implements Delayed {
 				TimeUnit.MILLISECONDS);
 	}
 
+	public String getFilename() {
+		String n = this.newName != null ? this.newName : this.name;
+
+		if (n == null) {
+			return null;
+		}
+
+		// TODO check path separator
+		String[] s = n.split(File.separator);
+		return s[s.length - 1];
+	}
+
+	public String getFullFilename() {
+		return this.rootPath + File.separator
+				+ (this.newName != null ? this.newName : this.name);
+	}
+
 	public String getName() {
 		return this.name;
 	}
@@ -75,6 +103,12 @@ public class LocalEvent implements Delayed {
 	@Override
 	public int hashCode() {
 		return (this.rootPath + "/" + this.name).hashCode();
+	}
+
+	public boolean isModified() {
+		return this.typeList.contains(Type.CREATE)
+				|| this.typeList.contains(Type.MODIFY)
+				|| (this.typeList.contains(Type.RENAME) && this.name == null);
 	}
 
 	public void merge(LocalEvent queuedEvent) {
