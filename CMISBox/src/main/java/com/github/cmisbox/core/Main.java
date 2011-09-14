@@ -14,6 +14,7 @@ public class Main {
 
 	private void start(String[] args) {
 		LogFactory.getLog(this.getClass()).info("Starting CMISBox...");
+		Config.getInstance();
 		try {
 			Watcher.getInstance().addWatch(args[0]);
 		} catch (IOException e) {

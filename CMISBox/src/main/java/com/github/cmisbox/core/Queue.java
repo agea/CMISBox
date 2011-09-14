@@ -54,18 +54,25 @@ public class Queue implements Runnable {
 	public void manageEvent(LocalEvent event) {
 		Log log = LogFactory.getLog(this.getClass());
 		log.debug("managing: " + event);
+
+		// any platform
+		// - a folder can be renamed before containing files are managed: on
+		// folder rename all children must be updated while still in queue;
+
 		// linux
 		// - if a file or folder is moved out of a watched folder it is reported
-		// as a rename to null
+		// as a rename to null (check if it's still there)
+
 		// mac osx
 		// - recursive folder operations (e.g. unzip an archive or move a folder
 		// inside a watched folder) are not reported, only root folder is
 		// reported as create
 		// - folder rename causes children to be notified as deleted (with old
 		// path)
+
 		try {
 			File f = new File(event.getFullFilename());
-			if (f.isFile() && event.isModified()) {
+			if (!f.isFile() && event.isModified()) {
 				long start = System.currentTimeMillis();
 				String digest = Digester.calculateDigest(event
 						.getFullFilename());
