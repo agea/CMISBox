@@ -7,12 +7,16 @@ import java.awt.SystemTray;
 import java.awt.TrayIcon;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 
 import javax.imageio.ImageIO;
+import javax.swing.JFileChooser;
 import javax.swing.UIManager;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import com.github.cmisbox.core.Main;
 
 public class UI {
 	private static UI instance = new UI();
@@ -38,8 +42,7 @@ public class UI {
 
 				ActionListener exitListener = new ActionListener() {
 					public void actionPerformed(ActionEvent e) {
-						System.out.println("Exiting...");
-						System.exit(0);
+						Main.exit(0);
 					}
 				};
 
@@ -48,8 +51,7 @@ public class UI {
 				defaultItem.addActionListener(exitListener);
 				popup.add(defaultItem);
 
-				final TrayIcon trayIcon = new TrayIcon(image, "Tray Demo",
-						popup);
+				final TrayIcon trayIcon = new TrayIcon(image, "CMISBox", popup);
 
 				trayIcon.setImageAutoSize(true);
 
@@ -60,6 +62,15 @@ public class UI {
 		} catch (Exception e) {
 			log.error(e);
 		}
+	}
+
+	public File getWatchFolder() {
+		JFileChooser chooser = new JFileChooser();
+		chooser.setDialogTitle("Choose your box");
+		chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+		chooser.setAcceptAllFileFilterUsed(false);
+		chooser.showOpenDialog(null);
+		return chooser.getSelectedFile();
 	}
 
 	public boolean isAvailable() {

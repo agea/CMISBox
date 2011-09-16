@@ -1,5 +1,6 @@
 package com.github.cmisbox.local;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -8,9 +9,11 @@ import net.contentobjects.jnotify.JNotify;
 import net.contentobjects.jnotify.JNotifyException;
 import net.contentobjects.jnotify.linux.JNotify_linux;
 
+import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.github.cmisbox.core.Config;
+import com.github.cmisbox.core.Main;
 import com.github.cmisbox.ui.UI;
 
 public class Watcher implements Runnable {
@@ -29,19 +32,29 @@ public class Watcher implements Runnable {
 	private Thread thread;
 
 	private Watcher() {
+		Log log = LogFactory.getLog(this.getClass());
 		Config config = Config.getInstance();
 		String watchFolder = config.getWatchFolder();
-		if (watchFolder == null) {
-
+		UI ui = UI.getInstance();
+		while (watchFolder == null) {
+			if (ui.isAvailable()) {
+				File f = ui.getWatchFolder();
+				watchFolder = f != null ? f.getAbsolutePath() : null;
+			} else {
+				System.err
+						.print("Unable to locate base folder, please inserrt one in cmisbox.properties");
+				log.error("Unable to locate base folder");
+				Main.exit(1);
+			}
 		}
 		try {
 			this.addWatch(watchFolder);
-		} catch (IOException e) {
-			LogFactory.getLog(this.getClass()).error(e);
-			if (UI.getInstance().isAvailable()) {
+		} catch (Throwable e) {
+			log.error(e);
+			if (ui.isAvailable()) {
 				// TODO issue a warning dialog;
 			} else {
-				System.exit(1);
+				Main.exit(1);
 			}
 		}
 

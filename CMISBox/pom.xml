@@ -1,58 +1,111 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>com.github.cmisbox</groupId>
-  <artifactId>CMISBox</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
-  <name>CMISBox</name>
-  <dependencies>
-  	<dependency>
-  		<groupId>org.apache.chemistry.opencmis</groupId>
-  		<artifactId>chemistry-opencmis-client-impl</artifactId>
-  		<version>0.4.0</version>
-  	</dependency>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.github.cmisbox</groupId>
+	<artifactId>CMISBox</artifactId>
+	<version>latest</version>
+	<name>CMISBox</name>
+	<dependencies>
+		<dependency>
+			<groupId>org.apache.chemistry.opencmis</groupId>
+			<artifactId>chemistry-opencmis-client-impl</artifactId>
+			<version>0.4.0</version>
+		</dependency>
 
-  	
-  	<dependency>
-  		<groupId>org.apache.lucene</groupId>
-  		<artifactId>lucene-core</artifactId>
-  		<version>3.3.0</version>
-  	</dependency>
-  	
-  	<dependency>
-  		<groupId>log4j</groupId>
-  		<artifactId>log4j</artifactId>
-  		<version>1.2.16</version>
 
-  	</dependency>
-  	<dependency>
-  		<groupId>bouncycastle</groupId>
-  		<artifactId>bcprov-jdk16</artifactId>
-  		<version>140</version>
-  	</dependency>
-  	<dependency>
-  		<groupId>net.java.balloontip</groupId>
-  		<artifactId>balloontip</artifactId>
-  		<version>1.2.1</version>
-  	</dependency>
-  </dependencies>
-  <build>
-  	<plugins>
-  		<plugin>
-  			<groupId>org.codehaus.mojo</groupId>
-  			<artifactId>osxappbundle-maven-plugin</artifactId>
-  			<version>1.0-alpha-2</version>
-  			<configuration>
-                    <mainClass>com.github.cmisbox.core.Main</mainClass>
+		<dependency>
+			<groupId>org.apache.lucene</groupId>
+			<artifactId>lucene-core</artifactId>
+			<version>3.3.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>log4j</groupId>
+			<artifactId>log4j</artifactId>
+			<version>1.2.16</version>
+
+		</dependency>
+		<dependency>
+			<groupId>bouncycastle</groupId>
+			<artifactId>bcprov-jdk16</artifactId>
+			<version>140</version>
+		</dependency>
+		<dependency>
+			<groupId>net.java.balloontip</groupId>
+			<artifactId>balloontip</artifactId>
+			<version>1.2.1</version>
+		</dependency>
+	</dependencies>
+	<build>
+		<plugins>
+		 <plugin>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <configuration>
+                <archive>
+                    <manifest>
+                        <mainClass>com.github.cmisbox.core.Main</mainClass>
+                    </manifest>
+                </archive>
+                <descriptorRefs>
+                    <descriptorRef>jar-with-dependencies</descriptorRef>
+                </descriptorRefs>
             </configuration>
-  			<executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>bundle</goal>
-                        </goals>
-                    </execution>
-               </executions>
-  		</plugin>
-  	</plugins>
-  </build>
+        </plugin>
+		
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>osxappbundle-maven-plugin</artifactId>
+				<version>1.0-alpha-2</version>
+				<configuration>
+					<mainClass>com.github.cmisbox.core.Main</mainClass>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>bundle</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.bluestemsoftware.open.maven.plugin</groupId>
+				<artifactId>launch4j-plugin</artifactId>
+				<version>1.5.0.0</version>
+				<executions>
+					<execution>
+						<id>l4j-gui</id>
+						<phase>package</phase>
+						<goals>
+							<goal>launch4j</goal>
+						</goals>
+						<configuration>
+							<headerType>gui</headerType>
+							<outfile>target/cmisbox.exe</outfile>
+							<dontWrapJar>true</dontWrapJar>
+							<jar>target/CMISBox-latest-jar-with-dependencies.jar</jar>
+							<errTitle>cmisbox</errTitle>
+							<classPath>
+								<mainClass>com.github.cmisbox.core.Main</mainClass>
+							</classPath>
+							<jre>
+								<minVersion>1.6.0</minVersion>
+							</jre>
+							<versionInfo>
+								<fileVersion>1.2.3.4</fileVersion>
+								<txtFileVersion>txt file version?</txtFileVersion>
+								<fileDescription>a description</fileDescription>
+								<copyright>my copyright</copyright>
+								<productVersion>4.3.2.1</productVersion>
+								<txtProductVersion>txt product version</txtProductVersion>
+								<productName>E-N-C-C</productName>
+								<internalName>ccne</internalName>
+								<originalFilename>original.exe</originalFilename>
+							</versionInfo>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
 </project>

@@ -66,21 +66,8 @@ public class Config {
 		System.getProperties().setProperty("cmisbox.home",
 				this.home.getAbsolutePath());
 
-		Properties logProperties = new Properties();
-
-		try {
-			logProperties.load(this.getClass().getResourceAsStream(
-					"log4j.properties"));
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-
-		logProperties.setProperty("log4j.appender.R.File=cmisbox.log",
-				new File(logdir, "cmisbox.log").getAbsolutePath());
-
-		PropertyConfigurator.configure(logProperties);
-
+		PropertyConfigurator.configure(this.getClass().getResource(
+				"log4j.properties"));
 		Log log = LogFactory.getLog(this.getClass());
 
 		this.properties = this.createDefaultProperties();
