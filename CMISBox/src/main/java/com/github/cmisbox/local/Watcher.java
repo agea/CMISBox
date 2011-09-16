@@ -10,6 +10,9 @@ import net.contentobjects.jnotify.linux.JNotify_linux;
 
 import org.apache.commons.logging.LogFactory;
 
+import com.github.cmisbox.core.Config;
+import com.github.cmisbox.ui.UI;
+
 public class Watcher implements Runnable {
 
 	public static Watcher getInstance() {
@@ -26,6 +29,22 @@ public class Watcher implements Runnable {
 	private Thread thread;
 
 	private Watcher() {
+		Config config = Config.getInstance();
+		String watchFolder = config.getWatchFolder();
+		if (watchFolder == null) {
+
+		}
+		try {
+			this.addWatch(watchFolder);
+		} catch (IOException e) {
+			LogFactory.getLog(this.getClass()).error(e);
+			if (UI.getInstance().isAvailable()) {
+				// TODO issue a warning dialog;
+			} else {
+				System.exit(1);
+			}
+		}
+
 		this.thread = new Thread(this, "Watcher");
 		this.thread.start();
 	}

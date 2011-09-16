@@ -1,10 +1,8 @@
 package com.github.cmisbox.core;
 
-import java.io.IOException;
-
 import org.apache.commons.logging.LogFactory;
 
-import com.github.cmisbox.local.Watcher;
+import com.github.cmisbox.ui.UI;
 
 public class Main {
 
@@ -14,13 +12,9 @@ public class Main {
 
 	private void start(String[] args) {
 		LogFactory.getLog(this.getClass()).info("Starting CMISBox...");
-		Config.getInstance();
-		try {
-			Watcher.getInstance().addWatch(args[0]);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		Config config = Config.getInstance();
+		UI.getInstance();
+
 	}
 
 }

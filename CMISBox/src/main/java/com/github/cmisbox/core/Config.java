@@ -16,6 +16,8 @@ public class Config {
 		LINUX, WINDOWS, MACOSX;
 	}
 
+	private static final String WATCHFOLDER = "watchfolder";
+
 	private static final String PROPERTIES_FILE = "cmisbox.properties";
 
 	private File home;
@@ -109,6 +111,10 @@ public class Config {
 
 	public OS getOS() {
 		return this.os;
+	}
+
+	public String getWatchFolder() {
+		return this.properties.getProperty(Config.WATCHFOLDER);
 	}
 
 }
