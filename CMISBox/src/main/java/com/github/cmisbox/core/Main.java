@@ -3,6 +3,7 @@ package com.github.cmisbox.core;
 import org.apache.commons.logging.LogFactory;
 
 import com.github.cmisbox.local.Watcher;
+import com.github.cmisbox.remote.CMISRepository;
 import com.github.cmisbox.ui.UI;
 
 public class Main {
@@ -17,6 +18,7 @@ public class Main {
 		LogFactory.getLog(Main.class).info("Starting CMISBox...");
 		UI.getInstance();
 		Watcher.getInstance();
+		CMISRepository.getInstance();
 
 	}
 

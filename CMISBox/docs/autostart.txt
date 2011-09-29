@@ -1,0 +1,19 @@
+== OSX
+You can add the application to the user's "Login Items" (under System Preferences=>Accounts=[user]) or you can add a launchd agent to the user's ~/Library/LaunchAgents folder (see man launchd.plist). Use ~/Library/LaunchDaemons/ if your app has no user-facing UI. As others point out, launchd gives you a lot of control over when the app starts, what happens if the app quits or crashes, etc. and is most appropriate for "daemon" style apps (with our without UI).
+
+
+== WIN
+
+How To Autostart Programs
+
+Here is what you need: You need to know the location of the startup folder in your Windows operating system, and you need a program shortcut to place in the autostart folder.
+
+    Windows XP: C:\Documents and Settings\username\Start Menu\Programs\Startup
+    Windows Vista: C:\users\username\AppData\Roaming\Microsoft\Windows\Start Menu
+    Windows 7: C:\Users\username\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+    
+    
+== LINUX (Gnome 2/3, KDE)
+~/.config/autostart
+
+

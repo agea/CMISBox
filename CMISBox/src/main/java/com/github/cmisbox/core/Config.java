@@ -10,21 +10,25 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.PropertyConfigurator;
 
+import com.github.cmisbox.ui.UI;
+
 public class Config {
 
 	public static enum OS {
 		LINUX, WINDOWS, MACOSX;
 	}
 
-	private static final String WATCHFOLDER = "watchfolder";
+	private static final String WATCHPARENT = "watchparent";
 
 	private static final String PROPERTIES_FILE = "cmisbox.properties";
 
-	private File home;
+	private File configHome;
 
 	private OS os;
 
 	private Properties properties;
+
+	private Log log;
 
 	private static Config instance = new Config();
 
@@ -54,26 +58,27 @@ public class Config {
 			homePath = System.getenv("APPDATA") + "/CMISBox";
 		}
 
-		this.home = new File(homePath);
-		if (!this.home.exists()) {
-			this.home.mkdirs();
+		this.configHome = new File(homePath);
+		if (!this.configHome.exists()) {
+			this.configHome.mkdirs();
 		}
-		File logdir = new File(this.home, "logs");
+		File logdir = new File(this.configHome, "logs");
 		if (!logdir.exists()) {
 			logdir.mkdirs();
 		}
 
 		System.getProperties().setProperty("cmisbox.home",
-				this.home.getAbsolutePath());
+				this.configHome.getAbsolutePath());
 
 		PropertyConfigurator.configure(this.getClass().getResource(
 				"log4j.properties"));
-		Log log = LogFactory.getLog(this.getClass());
+		this.log = LogFactory.getLog(this.getClass());
 
 		this.properties = this.createDefaultProperties();
 
 		try {
-			File propertiesFile = new File(this.home, Config.PROPERTIES_FILE);
+			File propertiesFile = new File(this.configHome,
+					Config.PROPERTIES_FILE);
 			if (!propertiesFile.exists()) {
 				FileOutputStream out = new FileOutputStream(propertiesFile);
 				this.properties.store(out, null);
@@ -81,17 +86,36 @@ public class Config {
 			}
 
 			this.properties.load(new FileInputStream(propertiesFile));
+
 		} catch (IOException e) {
 
 		}
 
-		log.info("CMISBox Home: " + this.home);
+		this.log.info("CMISBox config home: " + this.configHome);
+
+		String watchParent = null;
+
+		UI ui = UI.getInstance();
+		while (watchParent == null) {
+			if (ui.isAvailable()) {
+				File f = ui.getWatchFolder();
+				watchParent = f != null ? f.getAbsolutePath() : null;
+
+				if (watchParent == null) {
+
+				}
+			} else {
+				System.err
+						.print("Unable to locate watch parent folder, please insert one in cmisbox.properties");
+				this.log.error("Unable to locate watch parent folder");
+				Main.exit(1);
+			}
+		}
 
 	}
 
 	private Properties createDefaultProperties() {
 		Properties p = new Properties();
-		p.setProperty("bada", "chie");
 
 		return p;
 	}
@@ -100,8 +124,41 @@ public class Config {
 		return this.os;
 	}
 
-	public String getWatchFolder() {
-		return this.properties.getProperty(Config.WATCHFOLDER);
+	public String getRepositoryPassword() {
+		return this.properties.getProperty("repository.password");
+	}
+
+	public String getRepositoryUrl() {
+		return this.properties.getProperty("repository.url");
+	}
+
+	public String getRepositoryUsername() {
+		return this.properties.getProperty("repository.username");
+	}
+
+	public String getWatchParent() {
+		return this.properties.getProperty(Config.WATCHPARENT);
+	}
+
+	private void saveProperties() {
+		File f = new File(this.configHome, Config.PROPERTIES_FILE);
+
+		try {
+			FileOutputStream fos = new FileOutputStream(f);
+			this.properties.store(fos, null);
+		} catch (Exception e) {
+			this.log.error(e);
+			UI ui = UI.getInstance();
+			if (ui.isAvailable()) {
+				ui.notify(e.getLocalizedMessage());
+			}
+		}
+
+	}
+
+	public void setWatchParent(String watchParent) {
+		this.properties.setProperty(Config.WATCHPARENT, watchParent);
+		this.saveProperties();
 	}
 
 }
