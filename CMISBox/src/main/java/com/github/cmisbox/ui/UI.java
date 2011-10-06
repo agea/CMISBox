@@ -22,8 +22,13 @@ import ch.swingfx.twinkle.NotificationBuilder;
 import ch.swingfx.twinkle.style.theme.DarkDefaultNotification;
 
 import com.github.cmisbox.core.Main;
+import com.github.cmisbox.core.Messages;
 
 public class UI {
+	public static enum Status {
+		NONE, OK, KO, SYNCH;
+	}
+
 	private static final String NOTIFY_TITLE = "CMISBox";
 
 	private static final DarkDefaultNotification DARK_DEFAULT_NOTIFICATION = new DarkDefaultNotification();
@@ -63,9 +68,28 @@ public class UI {
 				};
 
 				PopupMenu popup = new PopupMenu();
-				MenuItem defaultItem = new MenuItem("Exit");
+				MenuItem defaultItem = new MenuItem(Messages.exit);
 				defaultItem.addActionListener(exitListener);
 				popup.add(defaultItem);
+
+				MenuItem loginItem = new MenuItem(Messages.login);
+				loginItem.addActionListener(new ActionListener() {
+
+					public void actionPerformed(ActionEvent arg0) {
+						new LoginDialog();
+					}
+				});
+				popup.add(loginItem);
+
+				MenuItem treeItem = new MenuItem(Messages.showTree);
+				treeItem.addActionListener(new ActionListener() {
+
+					public void actionPerformed(ActionEvent arg0) {
+						new TreeDemo();
+					}
+				});
+
+				popup.add(treeItem);
 
 				final TrayIcon trayIcon = new TrayIcon(image, UI.NOTIFY_TITLE,
 						popup);
@@ -74,8 +98,7 @@ public class UI {
 
 				this.tray.add(trayIcon);
 
-				String msg = "Startup complete";
-				this.notify(msg);
+				this.notify(Messages.startupComplete);
 
 			}
 
@@ -86,7 +109,6 @@ public class UI {
 
 	public File getWatchFolder() {
 		JFileChooser chooser = new JFileChooser();
-		chooser.setDialogTitle("Choose your box");
 		chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 		chooser.setAcceptAllFileFilterUsed(false);
 		chooser.showOpenDialog(null);
@@ -103,8 +125,13 @@ public class UI {
 				.withIcon(UI.NOTIFY_ICON).showNotification();
 	}
 
-	public void openRemoteLoginDialog() {
+	public LoginDialog openRemoteLoginDialog() {
 		LoginDialog ld = new LoginDialog();
 		ld.waitFor();
+		return ld;
+	}
+
+	public void setStatus(Status status) {
+
 	}
 }

@@ -18,6 +18,12 @@ public class Config {
 		LINUX, WINDOWS, MACOSX;
 	}
 
+	private static final String REPOSITORY_USERNAME = "repository.username";
+
+	private static final String REPOSITORY_URL = "repository.url";
+
+	private static final String REPOSITORY_PASSWORD = "repository.password";
+
 	private static final String WATCHPARENT = "watchparent";
 
 	private static final String PROPERTIES_FILE = "cmisbox.properties";
@@ -46,7 +52,7 @@ public class Config {
 		} else if (osName.startsWith("mac os x")) {
 			this.os = OS.MACOSX;
 		} else {
-			throw new RuntimeException("Unsupported OS : " + osName);
+			throw new RuntimeException(Messages.unsupportedOs + ": " + osName);
 		}
 
 		String homePath = System.getProperty("user.home");
@@ -91,23 +97,27 @@ public class Config {
 
 		}
 
-		this.log.info("CMISBox config home: " + this.configHome);
+		this.log.info(Messages.cmisBoxConfigHome + ": " + this.configHome);
 
-		String watchParent = null;
+		String watchParent = this.properties.getProperty(Config.WATCHPARENT);
 
 		UI ui = UI.getInstance();
 		while (watchParent == null) {
 			if (ui.isAvailable()) {
 				File f = ui.getWatchFolder();
 				watchParent = f != null ? f.getAbsolutePath() : null;
-
-				if (watchParent == null) {
+				if (watchParent != null) {
+					this.saveProperties();
+					File box = new File(f, "Box");
+					box.mkdirs();
+					this.properties.setProperty(Config.WATCHPARENT,
+							box.getAbsolutePath());
 
 				}
 			} else {
-				System.err
-						.print("Unable to locate watch parent folder, please insert one in cmisbox.properties");
-				this.log.error("Unable to locate watch parent folder");
+				System.err.print(Messages.unableToLocateParent + ", "
+						+ Messages.pleaseInsertInProps);
+				this.log.error(Messages.unableToLocateParent);
 				Main.exit(1);
 			}
 		}
@@ -125,15 +135,15 @@ public class Config {
 	}
 
 	public String getRepositoryPassword() {
-		return this.properties.getProperty("repository.password");
+		return this.properties.getProperty(Config.REPOSITORY_PASSWORD);
 	}
 
 	public String getRepositoryUrl() {
-		return this.properties.getProperty("repository.url");
+		return this.properties.getProperty(Config.REPOSITORY_URL);
 	}
 
 	public String getRepositoryUsername() {
-		return this.properties.getProperty("repository.username");
+		return this.properties.getProperty(Config.REPOSITORY_USERNAME);
 	}
 
 	public String getWatchParent() {
@@ -153,6 +163,14 @@ public class Config {
 				ui.notify(e.getLocalizedMessage());
 			}
 		}
+
+	}
+
+	public void setCredentials(String username, String password, String url) {
+		this.properties.setProperty(Config.REPOSITORY_USERNAME, username);
+		this.properties.setProperty(Config.REPOSITORY_PASSWORD, password);
+		this.properties.setProperty(Config.REPOSITORY_URL, url);
+		this.saveProperties();
 
 	}
 

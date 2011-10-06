@@ -9,13 +9,14 @@ import com.github.cmisbox.ui.UI;
 public class Main {
 
 	public static void exit(int code) {
-		LogFactory.getLog(Main.class).info("Exiting CMISBox...");
+		LogFactory.getLog(Main.class).info(Messages.exitingCmisBox + "...");
 		System.exit(code);
 	}
 
 	public static void main(String[] args) {
+		Messages.init();
 		Config.getInstance();
-		LogFactory.getLog(Main.class).info("Starting CMISBox...");
+		LogFactory.getLog(Main.class).info(Messages.startingCmisBox + "...");
 		UI.getInstance();
 		Watcher.getInstance();
 		CMISRepository.getInstance();

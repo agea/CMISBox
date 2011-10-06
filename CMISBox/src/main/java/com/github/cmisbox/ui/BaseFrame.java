@@ -30,7 +30,7 @@ import org.apache.commons.logging.LogFactory;
 public abstract class BaseFrame extends javax.swing.JFrame implements
 		javax.swing.RootPaneContainer {
 
-	private static final class CloseAdapter extends MouseAdapter {
+	static final class CloseAdapter extends MouseAdapter {
 
 		private BaseFrame f;
 
