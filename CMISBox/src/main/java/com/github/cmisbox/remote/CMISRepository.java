@@ -1,10 +1,14 @@
 package com.github.cmisbox.remote;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.TreeMap;
 
+import org.apache.chemistry.opencmis.client.api.QueryResult;
 import org.apache.chemistry.opencmis.client.api.Session;
 import org.apache.chemistry.opencmis.client.runtime.SessionFactoryImpl;
+import org.apache.chemistry.opencmis.commons.PropertyIds;
 import org.apache.chemistry.opencmis.commons.SessionParameter;
 import org.apache.chemistry.opencmis.commons.enums.BindingType;
 import org.apache.commons.logging.Log;
@@ -98,4 +102,24 @@ public class CMISRepository {
 		this.connector.start();
 
 	}
+
+	public TreeMap<String, String> getChildrenFolders(String id) {
+		TreeMap<String, String> res = new TreeMap<String, String>();
+		Iterator<QueryResult> i = this.session
+				.query("select * from cmis:folder where in_folder('" + id
+						+ "')", true).iterator();
+		while (i.hasNext()) {
+			QueryResult qr = i.next();
+			res.put(qr.getPropertyById(PropertyIds.NAME).getFirstValue()
+					.toString(), qr.getPropertyById(PropertyIds.OBJECT_ID)
+					.getFirstValue().toString());
+		}
+		return res;
+	}
+
+	public TreeMap<String, String> getRoots() {
+		return this.getChildrenFolders(this.session.getRootFolder().getId());
+
+	}
+
 }

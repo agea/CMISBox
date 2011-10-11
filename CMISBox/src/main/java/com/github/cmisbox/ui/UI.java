@@ -85,7 +85,7 @@ public class UI {
 				treeItem.addActionListener(new ActionListener() {
 
 					public void actionPerformed(ActionEvent arg0) {
-						new TreeDemo();
+						new TreeSelect();
 					}
 				});
 
