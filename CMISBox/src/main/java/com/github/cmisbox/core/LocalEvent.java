@@ -2,20 +2,21 @@ package com.github.cmisbox.core;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 
 public class LocalEvent implements Delayed {
 
-	public static enum Type {
-		CREATE, DELETE, MODIFY, RENAME;
-	}
-
 	private static final long delay = 5000;
 
-	private List<Type> typeList = new ArrayList<Type>();
+	private boolean create = false;
+
+	private boolean delete = false;
+
+	private boolean modify = false;
+
+	private boolean rename = false;
 
 	private String rootPath;
 
@@ -25,24 +26,32 @@ public class LocalEvent implements Delayed {
 
 	private long expiration = System.currentTimeMillis() + LocalEvent.delay;
 
-	public LocalEvent(Type type, String rootPath, String name) {
-		this.typeList.add(type);
+	public LocalEvent(boolean create, boolean modify, boolean delete,
+			boolean rename, String rootPath, String name) {
+		this.create = create;
+		this.modify = modify;
+		this.delete = delete;
+		this.rename = rename;
 		this.rootPath = rootPath;
 		this.name = name;
-		if (this.name != null && this.name.endsWith("/")) {
+		if ((this.name != null) && this.name.endsWith("/")) {
 			this.name = this.name.substring(0, name.length() - 1);
 		}
 	}
 
-	public LocalEvent(Type type, String rootPath, String name, String newName) {
-		this.typeList.add(type);
+	public LocalEvent(boolean create, boolean modify, boolean delete,
+			boolean rename, String rootPath, String name, String newName) {
+		this.create = create;
+		this.modify = modify;
+		this.delete = delete;
+		this.rename = rename;
 		this.rootPath = rootPath;
 		this.name = name;
 		this.newName = newName;
-		if (this.name != null && this.name.endsWith("/")) {
+		if ((this.name != null) && this.name.endsWith("/")) {
 			this.name = this.name.substring(0, name.length() - 1);
 		}
-		if (this.newName != null && this.newName.endsWith("/")) {
+		if ((this.newName != null) && this.newName.endsWith("/")) {
 			this.newName = this.newName.substring(0, name.length() - 1);
 		}
 
@@ -66,6 +75,27 @@ public class LocalEvent implements Delayed {
 	public long getDelay(TimeUnit unit) {
 		return unit.convert(this.expiration - System.currentTimeMillis(),
 				TimeUnit.MILLISECONDS);
+	}
+
+	public String getEffectiveName() {
+		return this.newName != null ? this.newName : this.name;
+	}
+
+	public List<String> getEvents() {
+		ArrayList<String> l = new ArrayList<String>();
+		if (this.create) {
+			l.add("CREATE");
+		}
+		if (this.modify) {
+			l.add("MODIFY");
+		}
+		if (this.rename) {
+			l.add("RENAME");
+		}
+		if (this.delete) {
+			l.add("DELETE");
+		}
+		return l;
 	}
 
 	public String getFilename() {
@@ -97,33 +127,37 @@ public class LocalEvent implements Delayed {
 		return this.rootPath;
 	}
 
-	public List<Type> getTypeList() {
-		return this.typeList;
-	}
-
 	@Override
 	public int hashCode() {
 		return (this.rootPath + "/" + this.name).hashCode();
 	}
 
-	public boolean isModified() {
-		return this.typeList.contains(Type.CREATE)
-				|| this.typeList.contains(Type.MODIFY)
-				|| (this.typeList.contains(Type.RENAME) && this.name == null);
+	public boolean isCreate() {
+		return this.create;
+	}
+
+	public boolean isDelete() {
+		return this.delete || (this.isRename() && (this.newName == null));
+	}
+
+	public boolean isEffectiveRename() {
+		return this.isRename() && (this.name != null) && (this.newName != null);
+	}
+
+	public boolean isModify() {
+		return this.modify || this.isCreate()
+				|| (this.isRename() && (this.name == null));
+	}
+
+	public boolean isRename() {
+		return this.rename;
 	}
 
 	public void merge(LocalEvent queuedEvent) {
-		this.typeList.addAll(0, queuedEvent.getTypeList());
-		Iterator<Type> i = this.typeList.iterator();
-		Type prev = null;
-		while (i.hasNext()) {
-			LocalEvent.Type type = i.next();
-			if (prev == type) {
-				i.remove();
-			} else {
-				prev = type;
-			}
-		}
+		this.create = queuedEvent.isCreate() || this.create;
+		this.delete = queuedEvent.isCreate() || this.delete;
+		this.modify = queuedEvent.isCreate() || this.modify;
+		this.rename = queuedEvent.isCreate() || this.rename;
 
 		if (this.newName == null) {
 			this.newName = queuedEvent.getNewName();
@@ -131,15 +165,26 @@ public class LocalEvent implements Delayed {
 
 	}
 
+	public void setCreate(boolean create) {
+		this.create = create;
+	}
+
+	public void setDelete(boolean delete) {
+		this.delete = delete;
+	}
+
+	public void setModify(boolean modify) {
+		this.modify = modify;
+	}
+
+	public void setRename(boolean rename) {
+		this.rename = rename;
+	}
+
 	@Override
 	public String toString() {
-		return this.typeList
-				+ ": "
-				+ this.rootPath
-				+ " + "
-				+ this.name
-				+ (!this.typeList.contains(Type.RENAME) ? "" : " -> "
-						+ this.newName);
+		return this.getEvents() + ": " + this.rootPath + " + " + this.name
+				+ (!this.rename ? "" : " -> " + this.newName);
 	}
 
 }

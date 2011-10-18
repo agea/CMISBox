@@ -3,10 +3,13 @@ package com.github.cmisbox.ui;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.Map.Entry;
 
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JTree;
@@ -15,6 +18,7 @@ import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreeSelectionModel;
 
+import com.github.cmisbox.persistence.Storage;
 import com.github.cmisbox.remote.CMISRepository;
 
 public class TreeSelect extends BaseFrame implements TreeSelectionListener {
@@ -107,6 +111,21 @@ public class TreeSelect extends BaseFrame implements TreeSelectionListener {
 
 		JLabel okButton = new JLabel(new ImageIcon(this.getImage(
 				"images/gtk-yes.png", 32, 32)));
+
+		okButton.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent arg0) {
+				try {
+					Storage.getInstance().synchRemoteFolder(
+							TreeSelect.this.selection.getId());
+				} catch (Exception e) {
+					JOptionPane.showMessageDialog(TreeSelect.this, e);
+					UI.getInstance().setStatus(UI.Status.KO);
+					TreeSelect.this.log.error(e);
+				}
+			}
+		});
+
 		cs.gridx = 2;
 		cs.gridy = 2;
 		cs.gridwidth = 1;

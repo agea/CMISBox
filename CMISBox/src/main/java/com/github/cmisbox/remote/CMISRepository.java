@@ -1,16 +1,21 @@
 package com.github.cmisbox.remote;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.apache.chemistry.opencmis.client.api.Folder;
+import org.apache.chemistry.opencmis.client.api.ObjectType;
 import org.apache.chemistry.opencmis.client.api.QueryResult;
 import org.apache.chemistry.opencmis.client.api.Session;
 import org.apache.chemistry.opencmis.client.runtime.SessionFactoryImpl;
+import org.apache.chemistry.opencmis.client.util.FileUtils;
 import org.apache.chemistry.opencmis.commons.PropertyIds;
 import org.apache.chemistry.opencmis.commons.SessionParameter;
 import org.apache.chemistry.opencmis.commons.enums.BindingType;
+import org.apache.chemistry.opencmis.commons.enums.VersioningState;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -18,6 +23,7 @@ import com.github.cmisbox.core.Config;
 import com.github.cmisbox.core.Main;
 import com.github.cmisbox.core.Messages;
 import com.github.cmisbox.ui.UI;
+import com.github.cmisbox.ui.UI.Status;
 
 public class CMISRepository {
 
@@ -84,8 +90,10 @@ public class CMISRepository {
 					if (CMISRepository.this.session == null) {
 						try {
 							CMISRepository.doLogin();
+							UI.getInstance().setStatus(UI.Status.OK);
 						} catch (Exception e) {
 							CMISRepository.this.log.error(e);
+							UI.getInstance().setStatus(Status.KO);
 						}
 					}
 					try {
@@ -103,6 +111,18 @@ public class CMISRepository {
 
 	}
 
+	public void addChild(String id, File f) throws Exception {
+		if (f.isDirectory()) {
+			FileUtils.createFolder(id, f.getName(),
+					ObjectType.FOLDER_BASETYPE_ID, this.session);
+		} else {
+			FileUtils.createDocumentFromFile(id, f,
+					ObjectType.DOCUMENT_BASETYPE_ID, VersioningState.NONE,
+					this.session);
+		}
+
+	}
+
 	public TreeMap<String, String> getChildrenFolders(String id) {
 		TreeMap<String, String> res = new TreeMap<String, String>();
 		Iterator<QueryResult> i = this.session
@@ -117,9 +137,17 @@ public class CMISRepository {
 		return res;
 	}
 
+	public Folder getFolder(String id) {
+		try {
+			return (Folder) this.session.getObject(id);
+		} catch (Exception e) {
+			this.log.error(e);
+			return null;
+		}
+	}
+
 	public TreeMap<String, String> getRoots() {
 		return this.getChildrenFolders(this.session.getRootFolder().getId());
-
 	}
 
 }

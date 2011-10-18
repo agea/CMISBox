@@ -2,11 +2,17 @@ package com.github.cmisbox.core;
 
 import java.io.File;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.DelayQueue;
 import java.util.regex.Pattern;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import com.github.cmisbox.persistence.Storage;
+import com.github.cmisbox.persistence.StoredItem;
+import com.github.cmisbox.remote.CMISRepository;
+import com.github.cmisbox.ui.UI;
 
 public class Queue implements Runnable {
 
@@ -25,12 +31,16 @@ public class Queue implements Runnable {
 
 	private DelayQueue<LocalEvent> delayQueue = new DelayQueue<LocalEvent>();
 
+	private Log log;
+
 	private Queue() {
 		this.thread = new Thread(this, "Queue");
 		this.thread.start();
+		this.log = LogFactory.getLog(this.getClass());
 	}
 
 	public synchronized void add(LocalEvent localEvent) {
+		this.log.debug(localEvent);
 		if (!this.active) {
 			return;
 		}
@@ -44,7 +54,9 @@ public class Queue implements Runnable {
 				}
 			}
 		}
-		this.delayQueue.put(localEvent);
+		if (!(localEvent.isCreate() && localEvent.isDelete())) {
+			this.delayQueue.put(localEvent);
+		}
 	}
 
 	public Pattern getFilter() {
@@ -72,15 +84,28 @@ public class Queue implements Runnable {
 
 		try {
 			File f = new File(event.getFullFilename());
-			if (!f.isFile() && event.isModified()) {
-				long start = System.currentTimeMillis();
-				String digest = Digester.calculateDigest(event
-						.getFullFilename());
-				log.debug(event.getFullFilename() + " == " + digest + " "
-						+ (System.currentTimeMillis() - start) + "ms");
+			if (event.isCreate()) {
+				String parent = f.getParent();
+				List<StoredItem> pl = Storage.getInstance().findByPath(parent);
+				if (pl.size() == 1) {
+					StoredItem pi = pl.get(0);
+					CMISRepository.getInstance().addChild(pi.getId(), f);
+
+				} else {
+					throw new Exception("Wrong parent: " + parent + ": " + pl);
+				}
+
+			} else if (event.isDelete()) {
+
+			} else if (event.isModify()) {
+
 			}
+
 		} catch (Exception e) {
 			log.error(e);
+			if (UI.getInstance().isAvailable()) {
+				UI.getInstance().notify(e.toString());
+			}
 		}
 	}
 

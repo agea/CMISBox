@@ -1,5 +1,6 @@
 package com.github.cmisbox.ui;
 
+import java.awt.Desktop;
 import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.MenuItem;
@@ -9,6 +10,7 @@ import java.awt.TrayIcon;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.IOException;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -21,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import ch.swingfx.twinkle.NotificationBuilder;
 import ch.swingfx.twinkle.style.theme.DarkDefaultNotification;
 
+import com.github.cmisbox.core.Config;
 import com.github.cmisbox.core.Main;
 import com.github.cmisbox.core.Messages;
 
@@ -48,6 +51,8 @@ public class UI {
 
 	private Log log;
 
+	private PopupMenu popup;
+
 	private UI() {
 		this.log = LogFactory.getLog(this.getClass());
 		try {
@@ -67,10 +72,10 @@ public class UI {
 					}
 				};
 
-				PopupMenu popup = new PopupMenu();
+				this.popup = new PopupMenu();
 				MenuItem defaultItem = new MenuItem(Messages.exit);
 				defaultItem.addActionListener(exitListener);
-				popup.add(defaultItem);
+				this.popup.add(defaultItem);
 
 				MenuItem loginItem = new MenuItem(Messages.login);
 				loginItem.addActionListener(new ActionListener() {
@@ -79,7 +84,7 @@ public class UI {
 						new LoginDialog();
 					}
 				});
-				popup.add(loginItem);
+				this.popup.add(loginItem);
 
 				MenuItem treeItem = new MenuItem(Messages.showTree);
 				treeItem.addActionListener(new ActionListener() {
@@ -89,10 +94,10 @@ public class UI {
 					}
 				});
 
-				popup.add(treeItem);
+				this.popup.add(treeItem);
 
 				final TrayIcon trayIcon = new TrayIcon(image, UI.NOTIFY_TITLE,
-						popup);
+						this.popup);
 
 				trayIcon.setImageAutoSize(true);
 
@@ -105,6 +110,24 @@ public class UI {
 		} catch (Exception e) {
 			this.log.error(e);
 		}
+	}
+
+	public void addWatch(String path) {
+		final MenuItem mi = new MenuItem(path.replaceAll("/", ""));
+		mi.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent arg0) {
+				try {
+					Desktop.getDesktop().open(
+							new File(Config.getInstance().getWatchParent(), mi
+									.getLabel()));
+				} catch (IOException e) {
+					UI.this.log.error(e);
+				}
+
+			}
+		});
+		this.popup.add(mi);
 	}
 
 	public File getWatchFolder() {
@@ -132,6 +155,30 @@ public class UI {
 	}
 
 	public void setStatus(Status status) {
+		if (!this.isAvailable()) {
+			return;
+		}
+		try {
+			if (status == Status.SYNCH) {
+				this.tray.getTrayIcons()[0].setImage(ImageIO.read(this
+						.getClass().getResource("images/cmisbox-synch.png")));
+			}
+			if (status == Status.OK) {
+				this.tray.getTrayIcons()[0].setImage(ImageIO.read(this
+						.getClass().getResource("images/cmisbox-ok.png")));
+			}
+			if (status == Status.KO) {
+				this.tray.getTrayIcons()[0].setImage(ImageIO.read(this
+						.getClass().getResource("images/cmisbox-error.png")));
+			}
+			if (status == Status.NONE) {
+				this.tray.getTrayIcons()[0].setImage(ImageIO.read(this
+						.getClass().getResource("images/cmisbox.png")));
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 	}
 }

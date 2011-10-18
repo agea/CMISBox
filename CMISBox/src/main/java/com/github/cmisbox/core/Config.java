@@ -130,6 +130,10 @@ public class Config {
 		return p;
 	}
 
+	public File getConfigHome() {
+		return this.configHome;
+	}
+
 	public OS getOS() {
 		return this.os;
 	}

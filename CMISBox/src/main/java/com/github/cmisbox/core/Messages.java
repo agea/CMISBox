@@ -17,6 +17,9 @@ public class Messages {
 	public static String connecting;
 	public static String login;
 	public static String showTree;
+	public static String synchAlreadyExisting;
+	public static String createdIndexFolder;
+	public static String folder;
 
 	public static void init() {
 		ResourceBundle rb = ResourceBundle

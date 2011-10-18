@@ -1,5 +1,6 @@
 package com.github.cmisbox.local;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,6 +11,9 @@ import net.contentobjects.jnotify.linux.JNotify_linux;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import com.github.cmisbox.core.Config;
+import com.github.cmisbox.ui.UI;
 
 public class Watcher implements Runnable {
 
@@ -36,9 +40,17 @@ public class Watcher implements Runnable {
 	}
 
 	public void addWatch(String path) throws IOException {
-		this.watches.put(path, JNotify.addWatch(path, this.mask,
-				this.watchSubtree, new Listener()));
+		if (!path.startsWith(File.separator)) {
+			path = File.separator + path;
+		}
+		this.watches.put(path, JNotify.addWatch(Config.getInstance()
+				.getWatchParent() + path, this.mask, this.watchSubtree,
+				new Listener()));
 		this.log.info("Watching " + path);
+		UI ui = UI.getInstance();
+		if (ui.isAvailable()) {
+			ui.addWatch(path);
+		}
 
 	}
 
