@@ -72,8 +72,6 @@ public class Storage {
 
 	private IndexWriter writer;
 
-	private IndexSearcher searcher;
-
 	private IndexReader reader;
 
 	private Storage() {
@@ -92,10 +90,9 @@ public class Storage {
 							new StandardAnalyzer(Version.LUCENE_33)));
 
 			this.reader = IndexReader.open(this.writer, false);
-			this.searcher = new IndexSearcher(this.reader);
 
 			Query query = new TermQuery(new Term(Storage.FIELD_ROOT, "" + true));
-			TopDocs search = this.searcher.search(query, 99999);
+			TopDocs search = this.getSearcher().search(query, 99999);
 			for (ScoreDoc sd : search.scoreDocs) {
 				org.apache.lucene.document.Document doc = this.reader
 						.document(sd.doc);
@@ -107,6 +104,14 @@ public class Storage {
 			Main.exit(1);
 		}
 
+	}
+
+	public void add(File f, CmisObject obj) throws Exception {
+		if (obj.getBaseTypeId().value().equals(ObjectType.FOLDER_BASETYPE_ID)) {
+			this.add(f, (Folder) obj, false);
+		} else {
+			this.add(f, (Document) obj);
+		}
 	}
 
 	public void add(File file, Document document) throws Exception {
@@ -147,21 +152,35 @@ public class Storage {
 
 	}
 
+	public void commit() throws Exception {
+		this.writer.commit();
+	}
+
+	public void delete(StoredItem item) throws Exception {
+		this.writer.deleteDocuments(new Term(Storage.FIELD_ID, item.getId()));
+		this.commit();
+	}
+
 	public List<StoredItem> findByPath(String path) throws Exception {
 		Query query = new TermQuery(new Term(Storage.FIELD_PATH, path));
-		TopDocs search = this.searcher.search(query, 99999);
+		TopDocs search = this.getSearcher().search(query, 99999);
 		List<StoredItem> res = new ArrayList<StoredItem>(search.totalHits);
 		for (int i = 0; i < search.totalHits; i++) {
 			org.apache.lucene.document.Document d = this.reader
 					.document(search.scoreDocs[i].doc);
-			res.add(new StoredItem(i, d.getFieldable(Storage.FIELD_ID)
-					.stringValue(), d.getFieldable(Storage.FIELD_TYPE)
-					.stringValue(), d.getFieldable(Storage.FIELD_PATH)
-					.stringValue(), Long.parseLong(d.getFieldable(
-					Storage.FIELD_LAST_MODIFIED).stringValue()), d
-					.getFieldable(Storage.FIELD_VERSION).stringValue()));
+
+			res.add(new StoredItem(i, d.getFieldable(Storage.FIELD_ID), d
+					.getFieldable(Storage.FIELD_TYPE), d
+					.getFieldable(Storage.FIELD_PATH), d
+					.getFieldable(Storage.FIELD_LAST_MODIFIED), d
+					.getFieldable(Storage.FIELD_VERSION)));
 		}
 		return res;
+	}
+
+	private IndexSearcher getSearcher() throws Exception {
+		this.reader = this.reader.reopen();
+		return new IndexSearcher(this.reader);
 	}
 
 	private void indexDocument(File file, Document document)
@@ -181,6 +200,7 @@ public class Storage {
 				file.lastModified(), Resolution.MILLISECOND), Store.YES,
 				Index.NOT_ANALYZED));
 		this.writer.addDocument(ldoc);
+		this.log.debug(String.format("Indexed %s", ldoc));
 	}
 
 	private void indexFolder(File file, Folder folder, boolean root)
@@ -201,6 +221,8 @@ public class Storage {
 				file.lastModified(), Resolution.MILLISECOND), Store.YES,
 				Index.NOT_ANALYZED));
 		this.writer.addDocument(ldoc);
+		this.log.debug(String.format("Indexed %s", ldoc));
+
 	}
 
 	public void synchRemoteFolder(String id) throws Exception {

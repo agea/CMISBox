@@ -1,13 +1,17 @@
 package com.github.cmisbox.remote;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.apache.chemistry.opencmis.client.api.CmisObject;
+import org.apache.chemistry.opencmis.client.api.Document;
 import org.apache.chemistry.opencmis.client.api.Folder;
-import org.apache.chemistry.opencmis.client.api.ObjectType;
+import org.apache.chemistry.opencmis.client.api.Property;
 import org.apache.chemistry.opencmis.client.api.QueryResult;
 import org.apache.chemistry.opencmis.client.api.Session;
 import org.apache.chemistry.opencmis.client.runtime.SessionFactoryImpl;
@@ -16,6 +20,8 @@ import org.apache.chemistry.opencmis.commons.PropertyIds;
 import org.apache.chemistry.opencmis.commons.SessionParameter;
 import org.apache.chemistry.opencmis.commons.enums.BindingType;
 import org.apache.chemistry.opencmis.commons.enums.VersioningState;
+import org.apache.chemistry.opencmis.commons.impl.MimeTypes;
+import org.apache.chemistry.opencmis.commons.impl.dataobjects.ContentStreamImpl;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -101,26 +107,24 @@ public class CMISRepository {
 					} catch (InterruptedException e) {
 
 					}
-
 				}
 			}
-
 		});
-
 		this.connector.start();
+	}
+
+	public CmisObject addChild(String id, File f) throws Exception {
+		if (f.isDirectory()) {
+			return FileUtils.createFolder(id, f.getName(), null, this.session);
+		} else {
+			return FileUtils.createDocumentFromFile(id, f, null,
+					VersioningState.NONE, this.session);
+		}
 
 	}
 
-	public void addChild(String id, File f) throws Exception {
-		if (f.isDirectory()) {
-			FileUtils.createFolder(id, f.getName(),
-					ObjectType.FOLDER_BASETYPE_ID, this.session);
-		} else {
-			FileUtils.createDocumentFromFile(id, f,
-					ObjectType.DOCUMENT_BASETYPE_ID, VersioningState.NONE,
-					this.session);
-		}
-
+	public void delete(String id) {
+		FileUtils.delete(id, this.session);
 	}
 
 	public TreeMap<String, String> getChildrenFolders(String id) {
@@ -148,6 +152,34 @@ public class CMISRepository {
 
 	public TreeMap<String, String> getRoots() {
 		return this.getChildrenFolders(this.session.getRootFolder().getId());
+	}
+
+	public CmisObject rename(String id, File f) {
+		CmisObject obj = this.session.getObject(id);
+		HashMap<String, Object> map = new HashMap<String, Object>();
+		for (Property<?> p : obj.getProperties()) {
+			map.put(p.getId(), p.getValue());
+		}
+		obj.updateProperties(map, true);
+		return obj;
+	}
+
+	public Document update(String id, File f) throws Exception {
+		Document doc = (Document) this.session.getObject(id);
+		HashMap<String, Object> map = new HashMap<String, Object>();
+		for (Property<?> p : doc.getProperties()) {
+			map.put(p.getId(), p.getValue());
+		}
+
+		map.put(PropertyIds.NAME, f.getName());
+
+		ContentStreamImpl contentStreamImpl = new ContentStreamImpl(
+				f.getName(), new BigInteger("" + f.length()),
+				MimeTypes.getMIMEType(f), new FileInputStream(f));
+		doc.checkIn(true, map, contentStreamImpl, "By CMISBox");
+
+		return null;
+
 	}
 
 }

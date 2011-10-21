@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.concurrent.DelayQueue;
 import java.util.regex.Pattern;
 
+import org.apache.chemistry.opencmis.client.api.CmisObject;
+import org.apache.chemistry.opencmis.client.api.Document;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -40,7 +42,7 @@ public class Queue implements Runnable {
 	}
 
 	public synchronized void add(LocalEvent localEvent) {
-		this.log.debug(localEvent);
+		this.log.debug("Asked to queue" + localEvent);
 		if (!this.active) {
 			return;
 		}
@@ -51,16 +53,28 @@ public class Queue implements Runnable {
 				if (queuedEvent.equals(localEvent)) {
 					localEvent.merge(queuedEvent);
 					i.remove();
+					this.log.debug("" + "Merged " + queuedEvent);
 				}
 			}
 		}
 		if (!(localEvent.isCreate() && localEvent.isDelete())) {
 			this.delayQueue.put(localEvent);
+			this.log.debug("Queued " + localEvent);
 		}
 	}
 
 	public Pattern getFilter() {
 		return this.filter;
+	}
+
+	private StoredItem getSingleItem(String path) throws Exception {
+		List<StoredItem> itemList = Storage.getInstance().findByPath(path);
+		if (itemList.size() == 1) {
+			return itemList.get(0);
+		} else {
+			throw new Exception(String.format(
+					"Expected one result in index: %s -> %s", path, itemList));
+		}
 	}
 
 	public void manageEvent(LocalEvent event) {
@@ -85,20 +99,35 @@ public class Queue implements Runnable {
 		try {
 			File f = new File(event.getFullFilename());
 			if (event.isCreate()) {
-				String parent = f.getParent();
-				List<StoredItem> pl = Storage.getInstance().findByPath(parent);
-				if (pl.size() == 1) {
-					StoredItem pi = pl.get(0);
-					CMISRepository.getInstance().addChild(pi.getId(), f);
+				String parent = f.getParent().substring(
+						Config.getInstance().getWatchParent().length());
 
-				} else {
-					throw new Exception("Wrong parent: " + parent + ": " + pl);
-				}
-
+				CmisObject obj = CMISRepository.getInstance().addChild(
+						this.getSingleItem(parent).getId(), f);
+				Storage.getInstance().add(f, obj);
 			} else if (event.isDelete()) {
-
+				StoredItem item = this.getSingleItem(event.getLocalPath());
+				if (f.exists()) {
+					throw new Exception(String.format(
+							"File %s reported to be deleted but stil exists",
+							f.getAbsolutePath()));
+				}
+				CMISRepository.getInstance().delete(item.getId());
+				Storage.getInstance().delete(item);
 			} else if (event.isModify()) {
-
+				if (f.isFile()) {
+					StoredItem item = this.getSingleItem(event.getLocalPath());
+					Document doc = CMISRepository.getInstance().update(
+							item.getId(), f);
+					Storage.getInstance().delete(item);
+					Storage.getInstance().add(f, doc);
+				}
+			} else if (event.isRename()) {
+				StoredItem item = this.getSingleItem(event.getLocalPath());
+				CmisObject obj = CMISRepository.getInstance().rename(
+						item.getId(), f);
+				Storage.getInstance().delete(item);
+				Storage.getInstance().add(f, obj);
 			}
 
 		} catch (Exception e) {
@@ -113,6 +142,9 @@ public class Queue implements Runnable {
 		while (this.active) {
 			try {
 				this.manageEvent(this.delayQueue.take());
+				if (this.delayQueue.isEmpty()) {
+
+				}
 			} catch (InterruptedException e) {
 				LogFactory.getLog(this.getClass()).info(this, e);
 			}

@@ -37,6 +37,10 @@ public class LocalEvent implements Delayed {
 		if ((this.name != null) && this.name.endsWith("/")) {
 			this.name = this.name.substring(0, name.length() - 1);
 		}
+		if (this.isDelete()) {
+			this.expiration = System.currentTimeMillis()
+					+ (LocalEvent.delay / 10);
+		}
 	}
 
 	public LocalEvent(boolean create, boolean modify, boolean delete,
@@ -53,6 +57,10 @@ public class LocalEvent implements Delayed {
 		}
 		if ((this.newName != null) && this.newName.endsWith("/")) {
 			this.newName = this.newName.substring(0, name.length() - 1);
+		}
+		if (this.isDelete()) {
+			this.expiration = System.currentTimeMillis()
+					+ (LocalEvent.delay / 10);
 		}
 
 	}
@@ -115,6 +123,18 @@ public class LocalEvent implements Delayed {
 				+ (this.newName != null ? this.newName : this.name);
 	}
 
+	public String getLocalNewPath() {
+		return this.getFullFilename().substring(
+				Config.getInstance().getWatchParent().length());
+	}
+
+	public String getLocalPath() {
+		return this.rootPath
+				+ File.separator
+				+ this.name.substring(Config.getInstance().getWatchParent()
+						.length());
+	}
+
 	public String getName() {
 		return this.name;
 	}
@@ -155,9 +175,9 @@ public class LocalEvent implements Delayed {
 
 	public void merge(LocalEvent queuedEvent) {
 		this.create = queuedEvent.isCreate() || this.create;
-		this.delete = queuedEvent.isCreate() || this.delete;
-		this.modify = queuedEvent.isCreate() || this.modify;
-		this.rename = queuedEvent.isCreate() || this.rename;
+		this.delete = queuedEvent.isDelete() || this.delete;
+		this.modify = queuedEvent.isModify() || this.modify;
+		this.rename = queuedEvent.isRename() || this.rename;
 
 		if (this.newName == null) {
 			this.newName = queuedEvent.getNewName();
