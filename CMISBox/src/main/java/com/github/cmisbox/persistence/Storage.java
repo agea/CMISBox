@@ -45,7 +45,9 @@ public class Storage {
 
 	public static final String FIELD_ID = "id";
 
-	public static final String FIELD_LAST_MODIFIED = "lastModified";
+	public static final String FIELD_LOCAL_MODIFIED = "localModified";
+
+	private static final String FIELD_REMOTE_MODIFIED = "remoteModified";
 
 	public static final String TYPE_FOLDER = "folder";
 
@@ -156,8 +158,10 @@ public class Storage {
 		this.writer.commit();
 	}
 
-	public void delete(StoredItem item) throws Exception {
-		this.writer.deleteDocuments(new Term(Storage.FIELD_ID, item.getId()));
+	public void delete(StoredItem item, boolean deleteChildren)
+			throws Exception {
+		this.writer.deleteDocuments(new Term(Storage.FIELD_PATH, item.getPath()
+				+ (deleteChildren ? "*" : "")));
 		this.commit();
 	}
 
@@ -172,15 +176,47 @@ public class Storage {
 			res.add(new StoredItem(i, d.getFieldable(Storage.FIELD_ID), d
 					.getFieldable(Storage.FIELD_TYPE), d
 					.getFieldable(Storage.FIELD_PATH), d
-					.getFieldable(Storage.FIELD_LAST_MODIFIED), d
+					.getFieldable(Storage.FIELD_LOCAL_MODIFIED), d
+					.getFieldable(Storage.FIELD_REMOTE_MODIFIED), d
 					.getFieldable(Storage.FIELD_VERSION)));
 		}
 		return res;
 	}
 
+	private String getNewPath(StoredItem storedItem, File file,
+			StoredItem baseItem) {
+		String newPathBase = file.getAbsolutePath().substring(
+				Config.getInstance().getWatchParent().length());
+
+		return (newPathBase + storedItem.getPath().substring(
+				baseItem.getPath().length()));
+	}
+
 	private IndexSearcher getSearcher() throws Exception {
 		this.reader = this.reader.reopen();
 		return new IndexSearcher(this.reader);
+	}
+
+	private void index(StoredItem si) throws Exception {
+		org.apache.lucene.document.Document ldoc = new org.apache.lucene.document.Document();
+
+		ldoc.add(new Field(Storage.FIELD_PATH, si.getPath(), Store.YES,
+				Index.NOT_ANALYZED));
+		ldoc.add(new Field(Storage.FIELD_TYPE, si.getType(), Store.YES,
+				Index.NOT_ANALYZED));
+		ldoc.add(new Field(Storage.FIELD_ID, si.getId(), Store.YES,
+				Index.NOT_ANALYZED));
+		ldoc.add(new Field(Storage.FIELD_VERSION, si.getVersion(), Store.YES,
+				Index.NOT_ANALYZED));
+		ldoc.add(new Field(Storage.FIELD_LOCAL_MODIFIED, DateTools
+				.timeToString(si.getLocalModified(), Resolution.MILLISECOND),
+				Store.YES, Index.NOT_ANALYZED));
+		ldoc.add(new Field(Storage.FIELD_REMOTE_MODIFIED, DateTools
+				.timeToString(si.getRemoteModified(), Resolution.MILLISECOND),
+				Store.YES, Index.NOT_ANALYZED));
+		this.writer.addDocument(ldoc);
+		this.log.debug(String.format("Indexed %s", ldoc));
+
 	}
 
 	private void indexDocument(File file, Document document)
@@ -196,8 +232,12 @@ public class Storage {
 				Index.NOT_ANALYZED));
 		ldoc.add(new Field(Storage.FIELD_VERSION, document.getVersionLabel(),
 				Store.YES, Index.NOT_ANALYZED));
-		ldoc.add(new Field(Storage.FIELD_LAST_MODIFIED, DateTools.timeToString(
-				file.lastModified(), Resolution.MILLISECOND), Store.YES,
+		ldoc.add(new Field(Storage.FIELD_LOCAL_MODIFIED, DateTools
+				.timeToString(file.lastModified(), Resolution.MILLISECOND),
+				Store.YES, Index.NOT_ANALYZED));
+		ldoc.add(new Field(Storage.FIELD_REMOTE_MODIFIED, DateTools
+				.timeToString(document.getLastModificationDate()
+						.getTimeInMillis(), Resolution.MILLISECOND), Store.YES,
 				Index.NOT_ANALYZED));
 		this.writer.addDocument(ldoc);
 		this.log.debug(String.format("Indexed %s", ldoc));
@@ -217,19 +257,38 @@ public class Storage {
 				Index.NOT_ANALYZED));
 		ldoc.add(new Field(Storage.FIELD_ID, folder.getId(), Store.YES,
 				Index.NOT_ANALYZED));
-		ldoc.add(new Field(Storage.FIELD_LAST_MODIFIED, DateTools.timeToString(
-				file.lastModified(), Resolution.MILLISECOND), Store.YES,
+		ldoc.add(new Field(Storage.FIELD_LOCAL_MODIFIED, DateTools
+				.timeToString(file.lastModified(), Resolution.MILLISECOND),
+				Store.YES, Index.NOT_ANALYZED));
+		ldoc.add(new Field(Storage.FIELD_REMOTE_MODIFIED, DateTools
+				.timeToString(folder.getLastModificationDate()
+						.getTimeInMillis(), Resolution.MILLISECOND), Store.YES,
 				Index.NOT_ANALYZED));
+
 		this.writer.addDocument(ldoc);
 		this.log.debug(String.format("Indexed %s", ldoc));
 
 	}
 
-	public void synchRemoteFolder(String id) throws Exception {
+	public void localUpdate(StoredItem item, File f, CmisObject obj)
+			throws Exception {
+		if (f.isFile()) {
+			this.delete(item, false);
+			this.add(f, obj);
+		} else {
+			for (StoredItem si : this.findByPath(item.getPath() + "*")) {
+				this.delete(si, false);
+				String path = this.getNewPath(si, f, item);
+				si.setPath(path);
+				this.index(si);
+			}
+		}
+	}
+
+	public void synchRemoteFolder(String id, String name) throws Exception {
 		UI.getInstance().setStatus(UI.Status.SYNCH);
 		Folder folder = CMISRepository.getInstance().getFolder(id);
-		File destFolder = new File(this.config.getWatchParent(),
-				folder.getName());
+		File destFolder = new File(this.config.getWatchParent(), name);
 		if (destFolder.exists()) {
 			this.log.error(Messages.synchAlreadyExisting);
 			if (UI.getInstance().isAvailable()) {
@@ -245,5 +304,4 @@ public class Storage {
 		}
 		UI.getInstance().setStatus(UI.Status.OK);
 	}
-
 }

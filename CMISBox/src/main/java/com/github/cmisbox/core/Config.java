@@ -110,9 +110,7 @@ public class Config {
 					this.saveProperties();
 					File box = new File(f, "Box");
 					box.mkdirs();
-					this.properties.setProperty(Config.WATCHPARENT,
-							box.getAbsolutePath());
-
+					this.setWatchParent(box.getAbsolutePath());
 				}
 			} else {
 				System.err.print(Messages.unableToLocateParent + ", "
@@ -154,12 +152,26 @@ public class Config {
 		return this.properties.getProperty(Config.WATCHPARENT);
 	}
 
+	public boolean isLinux() {
+		return this.getOS() == OS.LINUX;
+	}
+
+	public boolean isMacOSX() {
+		return this.getOS() == OS.MACOSX;
+	}
+
+	public boolean isWindows() {
+		return this.getOS() == OS.WINDOWS;
+	}
+
 	private void saveProperties() {
 		File f = new File(this.configHome, Config.PROPERTIES_FILE);
 
 		try {
 			FileOutputStream fos = new FileOutputStream(f);
 			this.properties.store(fos, null);
+			fos.close();
+
 		} catch (Exception e) {
 			this.log.error(e);
 			UI ui = UI.getInstance();

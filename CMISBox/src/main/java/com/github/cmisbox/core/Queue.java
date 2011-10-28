@@ -46,7 +46,7 @@ public class Queue implements Runnable {
 		if (!this.active) {
 			return;
 		}
-		if (this.delayQueue.contains(localEvent)) {
+		if (this.delayQueue.contains(localEvent) || localEvent.isRename()) {
 			Iterator<LocalEvent> i = this.delayQueue.iterator();
 			while (i.hasNext()) {
 				LocalEvent queuedEvent = i.next();
@@ -54,9 +54,16 @@ public class Queue implements Runnable {
 					localEvent.merge(queuedEvent);
 					i.remove();
 					this.log.debug("" + "Merged " + queuedEvent);
+
+				} else if (Config.getInstance().isMacOSX()
+						&& localEvent.isRename() && queuedEvent.isDelete()) {
+					if (localEvent.isParent(queuedEvent)) {
+						i.remove();
+					}
 				}
 			}
 		}
+
 		if (!(localEvent.isCreate() && localEvent.isDelete())) {
 			this.delayQueue.put(localEvent);
 			this.log.debug("Queued " + localEvent);
@@ -113,21 +120,20 @@ public class Queue implements Runnable {
 							f.getAbsolutePath()));
 				}
 				CMISRepository.getInstance().delete(item.getId());
-				Storage.getInstance().delete(item);
+				Storage.getInstance().delete(item, true);
 			} else if (event.isModify()) {
 				if (f.isFile()) {
 					StoredItem item = this.getSingleItem(event.getLocalPath());
 					Document doc = CMISRepository.getInstance().update(
 							item.getId(), f);
-					Storage.getInstance().delete(item);
-					Storage.getInstance().add(f, doc);
+					Storage.getInstance().localUpdate(item, f, doc);
+
 				}
 			} else if (event.isRename()) {
 				StoredItem item = this.getSingleItem(event.getLocalPath());
 				CmisObject obj = CMISRepository.getInstance().rename(
 						item.getId(), f);
-				Storage.getInstance().delete(item);
-				Storage.getInstance().add(f, obj);
+				Storage.getInstance().localUpdate(item, f, obj);
 			}
 
 		} catch (Exception e) {

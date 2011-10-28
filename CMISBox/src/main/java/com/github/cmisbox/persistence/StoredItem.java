@@ -10,15 +10,16 @@ public class StoredItem {
 	private String id;
 	private String type;
 	private String path;
-	private Long lastModified;
+	private Long localModified;
+	private Long remoteModified;
 	private String version;
 
 	public StoredItem() {
 	}
 
 	public StoredItem(int docNumber, Fieldable id, Fieldable type,
-			Fieldable path, Fieldable lastModified, Fieldable version)
-			throws Exception {
+			Fieldable path, Fieldable localModified, Fieldable remoteModified,
+			Fieldable version) throws Exception {
 		this.docNumber = docNumber;
 		if (id != null) {
 			this.id = id.stringValue();
@@ -29,8 +30,12 @@ public class StoredItem {
 		if (path != null) {
 			this.path = path.stringValue();
 		}
-		if (lastModified != null) {
-			this.lastModified = DateTools.stringToTime(lastModified
+		if (localModified != null) {
+			this.localModified = DateTools.stringToTime(localModified
+					.stringValue());
+		}
+		if (remoteModified != null) {
+			this.remoteModified = DateTools.stringToTime(remoteModified
 					.stringValue());
 		}
 		if (version != null) {
@@ -46,12 +51,16 @@ public class StoredItem {
 		return this.id;
 	}
 
-	public Long getLastModified() {
-		return this.lastModified;
+	public Long getLocalModified() {
+		return this.localModified;
 	}
 
 	public String getPath() {
 		return this.path;
+	}
+
+	public Long getRemoteModified() {
+		return this.remoteModified;
 	}
 
 	public String getType() {
@@ -70,12 +79,16 @@ public class StoredItem {
 		this.id = id;
 	}
 
-	public void setLastModified(Long lastModified) {
-		this.lastModified = lastModified;
+	public void setLocalModified(Long lastModified) {
+		this.localModified = lastModified;
 	}
 
 	public void setPath(String path) {
 		this.path = path;
+	}
+
+	public void setRemoteModified(Long remoteModified) {
+		this.remoteModified = remoteModified;
 	}
 
 	public void setType(String type) {
@@ -89,7 +102,7 @@ public class StoredItem {
 	@Override
 	public String toString() {
 		return String.format("StoredItem[%d,%s,$s,%s,%s,%s]", this.docNumber,
-				this.id, this.type, this.path, new Date(this.lastModified),
+				this.id, this.type, this.path, new Date(this.localModified),
 				this.version);
 	}
 }

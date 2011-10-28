@@ -113,7 +113,6 @@ public class LocalEvent implements Delayed {
 			return null;
 		}
 
-		// TODO check path separator
 		String[] s = n.split(File.separator);
 		return s[s.length - 1];
 	}
@@ -129,10 +128,8 @@ public class LocalEvent implements Delayed {
 	}
 
 	public String getLocalPath() {
-		return this.rootPath
-				+ File.separator
-				+ this.name.substring(Config.getInstance().getWatchParent()
-						.length());
+		return (this.rootPath + File.separator + this.name).substring(Config
+				.getInstance().getWatchParent().length());
 	}
 
 	public String getName() {
@@ -157,7 +154,9 @@ public class LocalEvent implements Delayed {
 	}
 
 	public boolean isDelete() {
-		return this.delete || (this.isRename() && (this.newName == null));
+		return this.delete
+				|| ((Config.getInstance().getOS() == Config.OS.LINUX)
+						&& this.isRename() && (this.newName == null));
 	}
 
 	public boolean isEffectiveRename() {
@@ -167,6 +166,10 @@ public class LocalEvent implements Delayed {
 	public boolean isModify() {
 		return this.modify || this.isCreate()
 				|| (this.isRename() && (this.name == null));
+	}
+
+	public boolean isParent(LocalEvent queuedEvent) {
+		return queuedEvent.getLocalPath().startsWith(this.getLocalPath());
 	}
 
 	public boolean isRename() {

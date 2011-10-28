@@ -18,6 +18,9 @@ import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreeSelectionModel;
 
+import net.java.balloontip.BalloonTip;
+
+import com.github.cmisbox.core.Messages;
 import com.github.cmisbox.persistence.Storage;
 import com.github.cmisbox.remote.CMISRepository;
 
@@ -29,13 +32,9 @@ public class TreeSelect extends BaseFrame implements TreeSelectionListener {
 
 	private LazyTreeNode selection;
 
-	private JTextField selLabel;
+	private JTextField selText;
 
-	// Optionally play with line styles. Possible values are
-	// "Angled" (the default), "Horizontal", and "None".
-	private static boolean playWithLineStyle = false;
-
-	private static String lineStyle = "Horizontal";
+	private BalloonTip tip;
 
 	public LazyTreeNode getSelection() {
 		return this.selection;
@@ -69,12 +68,6 @@ public class TreeSelect extends BaseFrame implements TreeSelectionListener {
 		this.tree.addTreeSelectionListener(this);
 		this.tree.addTreeWillExpandListener(lazyTreeModel);
 
-		if (TreeSelect.playWithLineStyle) {
-			System.out.println("line style = " + TreeSelect.lineStyle);
-			this.tree
-					.putClientProperty("JTree.lineStyle", TreeSelect.lineStyle);
-		}
-
 		GridBagConstraints cs = new GridBagConstraints();
 
 		cs.fill = GridBagConstraints.HORIZONTAL;
@@ -105,9 +98,12 @@ public class TreeSelect extends BaseFrame implements TreeSelectionListener {
 		cs.weightx = 1000;
 		cs.weighty = 1;
 
-		this.selLabel = new JTextField();
-		this.selLabel.setEditable(false);
-		this.mainPanel.add(this.selLabel, cs);
+		this.selText = new JTextField();
+		this.selText.setEditable(true);
+		this.tip = new BalloonTip(this.selText, Messages.youCanChangeFolderName);
+		this.tip.setVisible(false);
+
+		this.mainPanel.add(this.selText, cs);
 
 		JLabel okButton = new JLabel(new ImageIcon(this.getImage(
 				"images/gtk-yes.png", 32, 32)));
@@ -117,7 +113,8 @@ public class TreeSelect extends BaseFrame implements TreeSelectionListener {
 			public void mouseClicked(MouseEvent arg0) {
 				try {
 					Storage.getInstance().synchRemoteFolder(
-							TreeSelect.this.selection.getId());
+							TreeSelect.this.selection.getId(),
+							TreeSelect.this.selText.getText());
 				} catch (Exception e) {
 					JOptionPane.showMessageDialog(TreeSelect.this, e);
 					UI.getInstance().setStatus(UI.Status.KO);
@@ -138,7 +135,8 @@ public class TreeSelect extends BaseFrame implements TreeSelectionListener {
 
 	public void setSelection(LazyTreeNode selection) {
 		this.selection = selection;
-		this.selLabel.setText(selection.getUserObject().toString());
+		this.selText.setText(selection.getUserObject().toString());
+		this.tip.setVisible(true);
 	}
 
 	/** Required by TreeSelectionListener interface. */
