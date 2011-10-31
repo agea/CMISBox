@@ -176,9 +176,13 @@ public class CMISRepository {
 		ContentStreamImpl contentStreamImpl = new ContentStreamImpl(
 				f.getName(), new BigInteger("" + f.length()),
 				MimeTypes.getMIMEType(f), new FileInputStream(f));
-		doc.checkIn(true, map, contentStreamImpl, "By CMISBox");
+		Document pwc = (Document) FileUtils.getObject(doc.checkOut().getId(),
+				this.session);
+		pwc.checkIn(true, map, contentStreamImpl, "By CMISBox");
 
-		return null;
+		doc.refresh();
+
+		return doc;
 
 	}
 

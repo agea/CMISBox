@@ -115,6 +115,7 @@ public class TreeSelect extends BaseFrame implements TreeSelectionListener {
 					Storage.getInstance().synchRemoteFolder(
 							TreeSelect.this.selection.getId(),
 							TreeSelect.this.selText.getText());
+					new CloseAdapter(TreeSelect.this).mouseClicked(null);
 				} catch (Exception e) {
 					JOptionPane.showMessageDialog(TreeSelect.this, e);
 					UI.getInstance().setStatus(UI.Status.KO);

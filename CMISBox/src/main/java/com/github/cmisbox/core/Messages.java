@@ -21,6 +21,8 @@ public class Messages {
 	public static String createdIndexFolder;
 	public static String folder;
 	public static String youCanChangeFolderName;
+	public static String synchComplete;
+	public static String isSynchronized;
 
 	public static void init() {
 		ResourceBundle rb = ResourceBundle

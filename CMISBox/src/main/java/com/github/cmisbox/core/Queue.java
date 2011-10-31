@@ -46,6 +46,12 @@ public class Queue implements Runnable {
 		if (!this.active) {
 			return;
 		}
+
+		if (this.filter.pattern().matches(localEvent.getName())) {
+			this.log.debug("Filtered " + localEvent);
+			return;
+		}
+
 		if (this.delayQueue.contains(localEvent) || localEvent.isRename()) {
 			Iterator<LocalEvent> i = this.delayQueue.iterator();
 			while (i.hasNext()) {

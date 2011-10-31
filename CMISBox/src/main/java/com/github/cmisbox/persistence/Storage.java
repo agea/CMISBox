@@ -274,7 +274,7 @@ public class Storage {
 			throws Exception {
 		if (f.isFile()) {
 			this.delete(item, false);
-			this.add(f, obj);
+			this.indexDocument(f, (Document) obj);
 		} else {
 			for (StoredItem si : this.findByPath(item.getPath() + "*")) {
 				this.delete(si, false);
@@ -297,10 +297,12 @@ public class Storage {
 		} else {
 			this.add(destFolder, folder, true);
 			this.writer.commit();
-			Watcher.getInstance().addWatch(destFolder.getAbsolutePath());
+			Watcher.getInstance().addWatch(
+					destFolder.getAbsolutePath().substring(
+							Config.getInstance().getWatchParent().length()));
 			UI.getInstance().notify(
 					Messages.folder + " " + destFolder.getName() + " "
-							+ Messages.synchAlreadyExisting);
+							+ Messages.isSynchronized);
 		}
 		UI.getInstance().setStatus(UI.Status.OK);
 	}
