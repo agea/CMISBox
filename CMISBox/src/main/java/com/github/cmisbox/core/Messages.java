@@ -23,6 +23,7 @@ public class Messages {
 	public static String youCanChangeFolderName;
 	public static String synchComplete;
 	public static String isSynchronized;
+	public static String conflict;
 
 	public static void init() {
 		ResourceBundle rb = ResourceBundle

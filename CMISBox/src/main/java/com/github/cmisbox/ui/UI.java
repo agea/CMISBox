@@ -142,10 +142,12 @@ public class UI {
 		return this.available;
 	}
 
-	public void notify(String msg) {
+	public void notify(final String msg) {
+
 		new NotificationBuilder().withStyle(UI.DARK_DEFAULT_NOTIFICATION)
 				.withTitle(UI.NOTIFY_TITLE).withMessage(msg)
 				.withIcon(UI.NOTIFY_ICON).showNotification();
+
 	}
 
 	public LoginDialog openRemoteLoginDialog() {

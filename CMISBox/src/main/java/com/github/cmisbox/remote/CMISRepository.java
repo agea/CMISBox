@@ -26,12 +26,18 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.github.cmisbox.core.Config;
+import com.github.cmisbox.core.LocalEvent;
 import com.github.cmisbox.core.Main;
 import com.github.cmisbox.core.Messages;
+import com.github.cmisbox.core.Queue;
+import com.github.cmisbox.persistence.Storage;
+import com.github.cmisbox.persistence.StoredItem;
 import com.github.cmisbox.ui.UI;
 import com.github.cmisbox.ui.UI.Status;
 
 public class CMISRepository {
+
+	public static final String CONFLICT = "CONFLICT";
 
 	private Thread connector;
 
@@ -67,9 +73,30 @@ public class CMISRepository {
 		parameter.put(SessionParameter.PASSWORD, password);
 
 		// connection settings
-		parameter.put(SessionParameter.ATOMPUB_URL, url);
+		parameter.put(SessionParameter.ATOMPUB_URL, url + "/s/cmis");
 		parameter.put(SessionParameter.BINDING_TYPE,
 				BindingType.ATOMPUB.value());
+
+		// parameter.put(SessionParameter.BINDING_TYPE,
+		// BindingType.WEBSERVICES.value());
+		// parameter.put(SessionParameter.WEBSERVICES_ACL_SERVICE, url
+		// + "/cmis/ACLService?wsdl");
+		// parameter.put(SessionParameter.WEBSERVICES_DISCOVERY_SERVICE, url
+		// + "/cmis/DiscoveryService?wsdl");
+		// parameter.put(SessionParameter.WEBSERVICES_MULTIFILING_SERVICE, url
+		// + "/cmis/MultiFilingService?wsdl");
+		// parameter.put(SessionParameter.WEBSERVICES_NAVIGATION_SERVICE, url
+		// + "/cmis/NavigationService?wsdl");
+		// parameter.put(SessionParameter.WEBSERVICES_OBJECT_SERVICE, url
+		// + "/cmis/ObjectService?wsdl");
+		// parameter.put(SessionParameter.WEBSERVICES_POLICY_SERVICE, url
+		// + "/cmis/PolicyService?wsdl");
+		// parameter.put(SessionParameter.WEBSERVICES_RELATIONSHIP_SERVICE, url
+		// + "/cmis/RelationshipService?wsdl");
+		// parameter.put(SessionParameter.WEBSERVICES_REPOSITORY_SERVICE, url
+		// + "/cmis/RepositoryService?wsdl");
+		// parameter.put(SessionParameter.WEBSERVICES_VERSIONING_SERVICE, url
+		// + "/cmis/VersioningService?wsdl");
 
 		// create session
 		org.apache.chemistry.opencmis.client.api.Repository r = f
@@ -77,8 +104,7 @@ public class CMISRepository {
 
 		parameter.put(SessionParameter.REPOSITORY_ID, r.getId());
 
-		com.github.cmisbox.remote.CMISRepository.instance.session = f
-				.createSession(parameter);
+		CMISRepository.instance.session = f.createSession(parameter);
 
 	}
 
@@ -102,12 +128,31 @@ public class CMISRepository {
 							UI.getInstance().setStatus(Status.KO);
 						}
 					}
+					if (CMISRepository.this.session != null) {
+						try {
+							Long lrm = Storage.getInstance()
+									.getLastRemoteModification();
+							if (lrm != null) {
+								Queue.getInstance().add(new LocalEvent());
+							}
+							UI.getInstance().setStatus(UI.Status.OK);
+						} catch (Exception e) {
+							CMISRepository.this.log.error(e);
+							UI.getInstance().setStatus(Status.KO);
+						}
+
+					}
 					try {
 						Thread.sleep(30000);
 					} catch (InterruptedException e) {
 
 					}
 				}
+			}
+
+			private void synchAllWatches(Long lrm) {
+				// TODO Auto-generated method stub
+
 			}
 		});
 		this.connector.start();
@@ -127,6 +172,10 @@ public class CMISRepository {
 		FileUtils.delete(id, this.session);
 	}
 
+	public void download(Document doc, File file) throws Exception {
+		FileUtils.download(doc, file.getAbsolutePath());
+	}
+
 	public TreeMap<String, String> getChildrenFolders(String id) {
 		TreeMap<String, String> res = new TreeMap<String, String>();
 		Iterator<QueryResult> i = this.session
@@ -139,6 +188,15 @@ public class CMISRepository {
 					.getFirstValue().toString());
 		}
 		return res;
+	}
+
+	public Document getDocument(String id) {
+		try {
+			return (Document) this.session.getObject(id);
+		} catch (Exception e) {
+			this.log.error(e);
+			return null;
+		}
 	}
 
 	public Folder getFolder(String id) {
@@ -155,20 +213,45 @@ public class CMISRepository {
 	}
 
 	public CmisObject rename(String id, File f) {
+		String newName = f.getName();
+		return this.rename(id, newName);
+	}
+
+	private CmisObject rename(String id, String newName) {
 		CmisObject obj = this.session.getObject(id);
 		HashMap<String, Object> map = new HashMap<String, Object>();
 		for (Property<?> p : obj.getProperties()) {
 			map.put(p.getId(), p.getValue());
 		}
+		map.put(PropertyIds.NAME, newName);
 		obj.updateProperties(map, true);
 		return obj;
 	}
 
-	public Document update(String id, File f) throws Exception {
-		Document doc = (Document) this.session.getObject(id);
+	public Document update(StoredItem item, File f) throws Exception {
+		Document doc = (Document) this.session.getObject(item.getId());
+		doc.refresh();
+
 		HashMap<String, Object> map = new HashMap<String, Object>();
 		for (Property<?> p : doc.getProperties()) {
 			map.put(p.getId(), p.getValue());
+		}
+
+		String versionComment = "By CMISBox";
+
+		if (!item.getVersion().equals(doc.getVersionLabel())) {
+			versionComment += " " + CMISRepository.CONFLICT;
+			String conflictName = f.getAbsolutePath();
+			int i = conflictName.lastIndexOf(".");
+			conflictName = conflictName.substring(0, i) + "_"
+					+ doc.getVersionLabel() + "_CONFLICT_"
+					+ doc.getLastModifiedBy() + conflictName.substring(i);
+
+			FileUtils.download(doc, conflictName);
+			if (UI.getInstance().isAvailable()) {
+				UI.getInstance().notify(
+						Messages.conflict + " : " + conflictName);
+			}
 		}
 
 		map.put(PropertyIds.NAME, f.getName());
@@ -176,9 +259,8 @@ public class CMISRepository {
 		ContentStreamImpl contentStreamImpl = new ContentStreamImpl(
 				f.getName(), new BigInteger("" + f.length()),
 				MimeTypes.getMIMEType(f), new FileInputStream(f));
-		Document pwc = (Document) FileUtils.getObject(doc.checkOut().getId(),
-				this.session);
-		pwc.checkIn(true, map, contentStreamImpl, "By CMISBox");
+
+		doc.checkIn(false, map, contentStreamImpl, versionComment);
 
 		doc.refresh();
 

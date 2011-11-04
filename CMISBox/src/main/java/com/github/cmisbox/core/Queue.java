@@ -130,9 +130,16 @@ public class Queue implements Runnable {
 			} else if (event.isModify()) {
 				if (f.isFile()) {
 					StoredItem item = this.getSingleItem(event.getLocalPath());
-					Document doc = CMISRepository.getInstance().update(
-							item.getId(), f);
-					Storage.getInstance().localUpdate(item, f, doc);
+
+					if (item.getLocalModified().longValue() < f.lastModified()) {
+
+						Document doc = CMISRepository.getInstance().update(
+								item, f);
+
+						Storage.getInstance().localUpdate(item, f, doc);
+					} else {
+						log.debug("file" + f + " modified in the past");
+					}
 
 				}
 			} else if (event.isRename()) {

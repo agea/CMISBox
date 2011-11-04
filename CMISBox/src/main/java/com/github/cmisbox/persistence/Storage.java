@@ -165,6 +165,20 @@ public class Storage {
 		this.commit();
 	}
 
+	public StoredItem findById(String id) throws Exception {
+		Query query = new TermQuery(new Term(Storage.FIELD_ID, id));
+		TopDocs search = this.getSearcher().search(query, 1);
+		org.apache.lucene.document.Document d = this.reader
+				.document(search.scoreDocs[0].doc);
+
+		return new StoredItem(0, d.getFieldable(Storage.FIELD_ID),
+				d.getFieldable(Storage.FIELD_TYPE),
+				d.getFieldable(Storage.FIELD_PATH),
+				d.getFieldable(Storage.FIELD_LOCAL_MODIFIED),
+				d.getFieldable(Storage.FIELD_REMOTE_MODIFIED),
+				d.getFieldable(Storage.FIELD_VERSION));
+	}
+
 	public List<StoredItem> findByPath(String path) throws Exception {
 		Query query = new TermQuery(new Term(Storage.FIELD_PATH, path));
 		TopDocs search = this.getSearcher().search(query, 99999);
@@ -181,6 +195,10 @@ public class Storage {
 					.getFieldable(Storage.FIELD_VERSION)));
 		}
 		return res;
+	}
+
+	public Long getLastRemoteModification() {
+		return null;
 	}
 
 	private String getNewPath(StoredItem storedItem, File file,

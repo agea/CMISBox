@@ -18,6 +18,8 @@ public class LocalEvent implements Delayed {
 
 	private boolean rename = false;
 
+	private boolean synch = false;
+
 	private String rootPath;
 
 	private String name;
