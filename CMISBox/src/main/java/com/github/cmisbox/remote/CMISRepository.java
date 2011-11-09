@@ -26,10 +26,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.github.cmisbox.core.Config;
-import com.github.cmisbox.core.LocalEvent;
 import com.github.cmisbox.core.Main;
 import com.github.cmisbox.core.Messages;
-import com.github.cmisbox.core.Queue;
 import com.github.cmisbox.persistence.Storage;
 import com.github.cmisbox.persistence.StoredItem;
 import com.github.cmisbox.ui.UI;
@@ -132,9 +130,7 @@ public class CMISRepository {
 						try {
 							Long lrm = Storage.getInstance()
 									.getLastRemoteModification();
-							if (lrm != null) {
-								Queue.getInstance().add(new LocalEvent());
-							}
+
 							UI.getInstance().setStatus(UI.Status.OK);
 						} catch (Exception e) {
 							CMISRepository.this.log.error(e);
