@@ -41,27 +41,27 @@ import com.github.cmisbox.remote.CMISRepository;
 import com.github.cmisbox.ui.UI;
 
 public class Storage {
-	private static final String FIELD_VERSION = "version";
+	public final static String indexFolderName = "indexes";
+
+	public static final String FIELD_ROOT = "root";
+
+	public static final String FIELD_VERSION = "version";
 
 	public static final String FIELD_ID = "id";
-
-	public static final String FIELD_LOCAL_MODIFIED = "localModified";
-
-	private static final String FIELD_REMOTE_MODIFIED = "remoteModified";
-
-	public static final String TYPE_FOLDER = "folder";
 
 	public static final String FIELD_TYPE = "type";
 
 	public static final String FIELD_PATH = "path";
 
+	public static final String FIELD_LOCAL_MODIFIED = "localModified";
+
+	public static final String FIELD_REMOTE_MODIFIED = "remoteModified";
+
+	public static final String TYPE_FOLDER = "folder";
+
+	public static final String TYPE_FILE = "file";
+
 	private static Storage instance = new Storage();
-
-	public final static String indexFolderName = "indexes";
-
-	private static final String TYPE_FILE = "file";
-
-	private static final String FIELD_ROOT = "root";
 
 	public static Storage getInstance() {
 		return Storage.instance;
@@ -93,14 +93,12 @@ public class Storage {
 
 			this.reader = IndexReader.open(this.writer, false);
 
-			Query query = new TermQuery(new Term(Storage.FIELD_ROOT, "" + true));
-			TopDocs search = this.getSearcher().search(query, 99999);
-			for (ScoreDoc sd : search.scoreDocs) {
-				org.apache.lucene.document.Document doc = this.reader
-						.document(sd.doc);
-				Watcher.getInstance().addWatch(doc.get(Storage.FIELD_PATH));
+			List<String> roots = this.getRootPaths();
 
+			for (String root : roots) {
+				Watcher.getInstance().addWatch(root);
 			}
+
 		} catch (Exception e) {
 			this.log.fatal(e);
 			Main.exit(1);
@@ -208,6 +206,27 @@ public class Storage {
 
 		return (newPathBase + storedItem.getPath().substring(
 				baseItem.getPath().length()));
+	}
+
+	public List<String> getRootIds() throws Exception {
+		return this.getRootsField(Storage.FIELD_ID);
+	}
+
+	private List<String> getRootPaths() throws Exception {
+		return this.getRootsField(Storage.FIELD_PATH);
+	}
+
+	public List<String> getRootsField(String field) throws Exception {
+		Query query = new TermQuery(new Term(Storage.FIELD_ROOT, "" + true));
+		TopDocs search = this.getSearcher().search(query, 99999);
+		List<String> roots = new ArrayList<String>();
+		for (ScoreDoc sd : search.scoreDocs) {
+			org.apache.lucene.document.Document doc = this.reader
+					.document(sd.doc);
+			roots.add(doc.get(field));
+
+		}
+		return roots;
 	}
 
 	private IndexSearcher getSearcher() throws Exception {

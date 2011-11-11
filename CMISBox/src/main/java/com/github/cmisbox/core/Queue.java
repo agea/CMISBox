@@ -1,6 +1,7 @@
 package com.github.cmisbox.core;
 
 import java.io.File;
+import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.DelayQueue;
@@ -8,6 +9,9 @@ import java.util.regex.Pattern;
 
 import org.apache.chemistry.opencmis.client.api.CmisObject;
 import org.apache.chemistry.opencmis.client.api.Document;
+import org.apache.chemistry.opencmis.client.api.ItemIterable;
+import org.apache.chemistry.opencmis.client.api.QueryResult;
+import org.apache.chemistry.opencmis.commons.PropertyIds;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -15,6 +19,7 @@ import com.github.cmisbox.persistence.Storage;
 import com.github.cmisbox.persistence.StoredItem;
 import com.github.cmisbox.remote.CMISRepository;
 import com.github.cmisbox.ui.UI;
+import com.github.cmisbox.ui.UI.Status;
 
 public class Queue implements Runnable {
 
@@ -27,7 +32,7 @@ public class Queue implements Runnable {
 	private boolean active = true;
 
 	// by default do not synch files starting with a dot
-	private Pattern filter = Pattern.compile("$\\..*");
+	private Pattern filter = Pattern.compile("^\\..*");
 
 	private Thread thread;
 
@@ -47,7 +52,8 @@ public class Queue implements Runnable {
 			return;
 		}
 
-		if (this.filter.pattern().matches(localEvent.getName())) {
+		if ((localEvent.getName() != null)
+				&& this.filter.pattern().matches(localEvent.getName())) {
 			this.log.debug("Filtered " + localEvent);
 			return;
 		}
@@ -110,6 +116,11 @@ public class Queue implements Runnable {
 		// path)
 
 		try {
+			if (event.isSynch()) {
+				this.synchAllWatches();
+				return;
+			}
+
 			File f = new File(event.getFullFilename());
 			if (event.isCreate()) {
 				String parent = f.getParent().substring(
@@ -181,4 +192,48 @@ public class Queue implements Runnable {
 		this.thread.interrupt();
 	}
 
+	private void synchAllWatches() throws Exception {
+		UI.getInstance().setStatus(Status.SYNCH);
+		for (String root : Storage.getInstance().getRootIds()) {
+
+			ItemIterable<QueryResult> iterable = CMISRepository.getInstance()
+					.getLastModifications(root);
+
+			do {
+				for (QueryResult queryResult : iterable) {
+					String objectId = queryResult
+							.getPropertyValueById(PropertyIds.OBJECT_ID);
+					String objectTypeId = queryResult
+							.getPropertyValueById(PropertyIds.OBJECT_TYPE_ID);
+					String name = queryResult
+							.getPropertyValueById(PropertyIds.NAME);
+					GregorianCalendar lastModificationDate = queryResult
+							.getPropertyValueById(PropertyIds.LAST_MODIFICATION_DATE);
+
+					StoredItem item = Storage.getInstance().findById(objectId);
+					if (item.getRemoteModified().longValue() >= lastModificationDate
+							.getTimeInMillis()) {
+						break;
+					} else {
+						File oldFile = new File(Config.getInstance()
+								.getWatchParent(), item.getPath());
+						if (item.getType().equals(Storage.TYPE_FOLDER)) {
+							oldFile.renameTo(new File(oldFile.getParent(), name));
+						} else {
+							oldFile.delete();
+							Document doc = CMISRepository.getInstance()
+									.getDocument(objectId);
+							File file = new File(oldFile.getParent(), name);
+							CMISRepository.getInstance().download(doc, file);
+							Storage.getInstance().delete(item, false);
+							Storage.getInstance().add(file, doc);
+						}
+
+					}
+				}
+			} while (iterable.getHasMoreItems());
+
+		}
+		UI.getInstance().setStatus(Status.OK);
+	}
 }

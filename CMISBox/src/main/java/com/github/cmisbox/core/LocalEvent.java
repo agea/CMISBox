@@ -10,6 +10,13 @@ public class LocalEvent implements Delayed {
 
 	private static final long delay = 5000;
 
+	public static LocalEvent createSynchEvent() {
+		LocalEvent le = new LocalEvent(false, false, false, false, null, null);
+		le.synch = true;
+		le.expiration = System.currentTimeMillis();
+		return le;
+	}
+
 	private boolean create = false;
 
 	private boolean delete = false;
@@ -176,6 +183,10 @@ public class LocalEvent implements Delayed {
 
 	public boolean isRename() {
 		return this.rename;
+	}
+
+	public boolean isSynch() {
+		return this.synch;
 	}
 
 	public void merge(LocalEvent queuedEvent) {

@@ -11,6 +11,8 @@ import java.util.TreeMap;
 import org.apache.chemistry.opencmis.client.api.CmisObject;
 import org.apache.chemistry.opencmis.client.api.Document;
 import org.apache.chemistry.opencmis.client.api.Folder;
+import org.apache.chemistry.opencmis.client.api.ItemIterable;
+import org.apache.chemistry.opencmis.client.api.OperationContext;
 import org.apache.chemistry.opencmis.client.api.Property;
 import org.apache.chemistry.opencmis.client.api.QueryResult;
 import org.apache.chemistry.opencmis.client.api.Session;
@@ -26,9 +28,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.github.cmisbox.core.Config;
+import com.github.cmisbox.core.LocalEvent;
 import com.github.cmisbox.core.Main;
 import com.github.cmisbox.core.Messages;
-import com.github.cmisbox.persistence.Storage;
+import com.github.cmisbox.core.Queue;
 import com.github.cmisbox.persistence.StoredItem;
 import com.github.cmisbox.ui.UI;
 import com.github.cmisbox.ui.UI.Status;
@@ -42,6 +45,8 @@ public class CMISRepository {
 	private Session session;
 
 	private Log log;
+
+	private boolean pushAvailable = false;
 
 	private static CMISRepository instance = new CMISRepository();
 
@@ -126,17 +131,9 @@ public class CMISRepository {
 							UI.getInstance().setStatus(Status.KO);
 						}
 					}
-					if (CMISRepository.this.session != null) {
-						try {
-							Long lrm = Storage.getInstance()
-									.getLastRemoteModification();
-
-							UI.getInstance().setStatus(UI.Status.OK);
-						} catch (Exception e) {
-							CMISRepository.this.log.error(e);
-							UI.getInstance().setStatus(Status.KO);
-						}
-
+					if ((CMISRepository.this.session != null)
+							&& !CMISRepository.this.pushAvailable) {
+						Queue.getInstance().add(LocalEvent.createSynchEvent());
 					}
 					try {
 						Thread.sleep(30000);
@@ -146,10 +143,6 @@ public class CMISRepository {
 				}
 			}
 
-			private void synchAllWatches(Long lrm) {
-				// TODO Auto-generated method stub
-
-			}
 		});
 		this.connector.start();
 	}
@@ -202,6 +195,16 @@ public class CMISRepository {
 			this.log.error(e);
 			return null;
 		}
+	}
+
+	public ItemIterable<QueryResult> getLastModifications(String rootId) {
+		OperationContext oc = this.session.createOperationContext();
+		oc.setMaxItemsPerPage(10);
+
+		return this.session.query("select cmis:objectId, cmis:objectTypeId, "
+				+ "cmis:name, cmis:lastModificationDate, cmis:versionLabel "
+				+ "from cmis:document where in_tree('" + rootId + "') "
+				+ "order by cmis:lastModificationDate desc", false, oc);
 	}
 
 	public TreeMap<String, String> getRoots() {
