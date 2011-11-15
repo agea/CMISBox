@@ -166,6 +166,9 @@ public class Storage {
 	public StoredItem findById(String id) throws Exception {
 		Query query = new TermQuery(new Term(Storage.FIELD_ID, id));
 		TopDocs search = this.getSearcher().search(query, 1);
+		if (search.totalHits == 0) {
+			throw new RuntimeException(id + " not found");
+		}
 		org.apache.lucene.document.Document d = this.reader
 				.document(search.scoreDocs[0].doc);
 

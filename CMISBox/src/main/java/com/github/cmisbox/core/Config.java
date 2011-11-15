@@ -28,6 +28,8 @@ public class Config {
 
 	private static final String PROPERTIES_FILE = "cmisbox.properties";
 
+	private static final String CHANGE_LOG_TOKEN = "change.log.token";
+
 	private File configHome;
 
 	private OS os;
@@ -128,6 +130,10 @@ public class Config {
 		return p;
 	}
 
+	public String getChangeLogToken() {
+		return this.properties.getProperty(Config.CHANGE_LOG_TOKEN);
+	}
+
 	public File getConfigHome() {
 		return this.configHome;
 	}
@@ -180,6 +186,11 @@ public class Config {
 			}
 		}
 
+	}
+
+	public void setChangeLogToken(String token) {
+		this.properties.setProperty(Config.CHANGE_LOG_TOKEN, token);
+		this.saveProperties();
 	}
 
 	public void setCredentials(String username, String password, String url) {

@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.apache.chemistry.opencmis.client.api.ChangeEvents;
 import org.apache.chemistry.opencmis.client.api.CmisObject;
 import org.apache.chemistry.opencmis.client.api.Document;
 import org.apache.chemistry.opencmis.client.api.Folder;
@@ -20,6 +21,7 @@ import org.apache.chemistry.opencmis.client.runtime.SessionFactoryImpl;
 import org.apache.chemistry.opencmis.client.util.FileUtils;
 import org.apache.chemistry.opencmis.commons.PropertyIds;
 import org.apache.chemistry.opencmis.commons.SessionParameter;
+import org.apache.chemistry.opencmis.commons.data.RepositoryInfo;
 import org.apache.chemistry.opencmis.commons.enums.BindingType;
 import org.apache.chemistry.opencmis.commons.enums.VersioningState;
 import org.apache.chemistry.opencmis.commons.impl.MimeTypes;
@@ -179,6 +181,14 @@ public class CMISRepository {
 		return res;
 	}
 
+	public ChangeEvents getContentChanges() {
+		OperationContext oc = this.session.createOperationContext();
+
+		ChangeEvents contentChanges = this.session.getContentChanges(Config
+				.getInstance().getChangeLogToken(), true, 99999);
+		return contentChanges;
+	}
+
 	public Document getDocument(String id) {
 		try {
 			return (Document) this.session.getObject(id);
@@ -197,13 +207,23 @@ public class CMISRepository {
 		}
 	}
 
-	public ItemIterable<QueryResult> getLastModifications(String rootId) {
+	public ItemIterable<QueryResult> getLastModificatedDocs(String rootId) {
 		OperationContext oc = this.session.createOperationContext();
 		oc.setMaxItemsPerPage(10);
 
-		return this.session.query("select cmis:objectId, cmis:objectTypeId, "
+		return this.session.query("select cmis:objectId, "
 				+ "cmis:name, cmis:lastModificationDate, cmis:versionLabel "
 				+ "from cmis:document where in_tree('" + rootId + "') "
+				+ "order by cmis:lastModificationDate desc", false, oc);
+	}
+
+	public ItemIterable<QueryResult> getLastModificatedFolders(String rootId) {
+		OperationContext oc = this.session.createOperationContext();
+		oc.setMaxItemsPerPage(10);
+
+		return this.session.query("select cmis:objectId, "
+				+ "cmis:name, cmis:lastModificationDate, cmis:versionLabel "
+				+ "from cmis:folder where in_tree('" + rootId + "') "
 				+ "order by cmis:lastModificationDate desc", false, oc);
 	}
 
@@ -264,6 +284,16 @@ public class CMISRepository {
 		doc.refresh();
 
 		return doc;
+
+	}
+
+	public void updateChangeLogToken() {
+		RepositoryInfo ri = this.session
+				.getBinding()
+				.getRepositoryService()
+				.getRepositoryInfo(this.session.getRepositoryInfo().getId(),
+						null);
+		Config.getInstance().setChangeLogToken(ri.getLatestChangeLogToken());
 
 	}
 

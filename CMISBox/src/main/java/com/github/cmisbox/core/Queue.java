@@ -1,19 +1,24 @@
 package com.github.cmisbox.core;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.DelayQueue;
 import java.util.regex.Pattern;
 
+import org.apache.chemistry.opencmis.client.api.ChangeEvent;
+import org.apache.chemistry.opencmis.client.api.ChangeEvents;
 import org.apache.chemistry.opencmis.client.api.CmisObject;
 import org.apache.chemistry.opencmis.client.api.Document;
 import org.apache.chemistry.opencmis.client.api.ItemIterable;
 import org.apache.chemistry.opencmis.client.api.QueryResult;
 import org.apache.chemistry.opencmis.commons.PropertyIds;
+import org.apache.chemistry.opencmis.commons.enums.ChangeType;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.Logger;
 
 import com.github.cmisbox.persistence.Storage;
 import com.github.cmisbox.persistence.StoredItem;
@@ -164,6 +169,7 @@ public class Queue implements Runnable {
 			log.error(e);
 			if (UI.getInstance().isAvailable()) {
 				UI.getInstance().notify(e.toString());
+				UI.getInstance().setStatus(Status.KO);
 			}
 		}
 	}
@@ -193,47 +199,76 @@ public class Queue implements Runnable {
 	}
 
 	private void synchAllWatches() throws Exception {
-		UI.getInstance().setStatus(Status.SYNCH);
-		for (String root : Storage.getInstance().getRootIds()) {
+		UI ui = UI.getInstance();
+		if (ui.isAvailable()) {
+			ui.setStatus(Status.SYNCH);
+		}
+		List<String[]> updates = new ArrayList<String[]>();
 
-			ItemIterable<QueryResult> iterable = CMISRepository.getInstance()
-					.getLastModifications(root);
+		ChangeEvents changeEvents = CMISRepository.getInstance()
+				.getContentChanges();
+		for (ChangeEvent ce : changeEvents.getChangeEvents()) {
+			System.out.println(ce);
+			if (ce.getChangeType().equals(ChangeType.CREATED)) {
+				//
+			}
+		}
+		changeEvents.getLatestChangeLogToken();
+		CMISRepository.getInstance().updateChangeLogToken();
 
-			do {
-				for (QueryResult queryResult : iterable) {
-					String objectId = queryResult
-							.getPropertyValueById(PropertyIds.OBJECT_ID);
-					String objectTypeId = queryResult
-							.getPropertyValueById(PropertyIds.OBJECT_TYPE_ID);
-					String name = queryResult
-							.getPropertyValueById(PropertyIds.NAME);
-					GregorianCalendar lastModificationDate = queryResult
-							.getPropertyValueById(PropertyIds.LAST_MODIFICATION_DATE);
-
-					StoredItem item = Storage.getInstance().findById(objectId);
-					if (item.getRemoteModified().longValue() >= lastModificationDate
-							.getTimeInMillis()) {
-						break;
-					} else {
-						File oldFile = new File(Config.getInstance()
-								.getWatchParent(), item.getPath());
-						if (item.getType().equals(Storage.TYPE_FOLDER)) {
-							oldFile.renameTo(new File(oldFile.getParent(), name));
-						} else {
-							oldFile.delete();
-							Document doc = CMISRepository.getInstance()
-									.getDocument(objectId);
-							File file = new File(oldFile.getParent(), name);
-							CMISRepository.getInstance().download(doc, file);
-							Storage.getInstance().delete(item, false);
-							Storage.getInstance().add(file, doc);
-						}
-
-					}
-				}
-			} while (iterable.getHasMoreItems());
+		if (ui.isAvailable()) {
+			ui.setStatus(Status.OK);
+			if (updates.size() == 1) {
+				ui.notify(updates.get(0)[0] + " " + Messages.updatedBy + " "
+						+ updates.get(0)[1]);
+			} else if (updates.size() > 1) {
+				ui.notify(Messages.updated + " " + updates.size()
+						+ Messages.files);
+			}
 
 		}
-		UI.getInstance().setStatus(Status.OK);
+	}
+
+	private void updateLocalChanges(List<String[]> updates,
+			ItemIterable<QueryResult> iterable) throws Exception {
+		do {
+			for (QueryResult queryResult : iterable) {
+				String objectId = queryResult
+						.getPropertyValueById(PropertyIds.OBJECT_ID);
+				String name = queryResult
+						.getPropertyValueById(PropertyIds.NAME);
+				GregorianCalendar lastModificationDate = queryResult
+						.getPropertyValueById(PropertyIds.LAST_MODIFICATION_DATE);
+
+				StoredItem item = Storage.getInstance().findById(objectId);
+				if (item.getRemoteModified().longValue() >= lastModificationDate
+						.getTimeInMillis()) {
+					break;
+				} else {
+					File oldFile = new File(Config.getInstance()
+							.getWatchParent(), item.getPath());
+					if (item.getType().equals(Storage.TYPE_FOLDER)) {
+						oldFile.renameTo(new File(oldFile.getParent(), name));
+					} else {
+						oldFile.delete();
+						Document doc = CMISRepository.getInstance()
+								.getDocument(objectId);
+						File file = new File(oldFile.getParent(), name);
+						CMISRepository.getInstance().download(doc, file);
+						Storage.getInstance().delete(item, false);
+						Storage.getInstance().add(file, doc);
+						updates.add(new String[] {
+								file.getAbsolutePath().substring(
+										Config.getInstance().getWatchParent()
+												.length()),
+								doc.getLastModifiedBy() });
+						Logger.getLogger(this.getClass()).debug(
+								"Updated remote changes: "
+										+ file.getAbsolutePath());
+					}
+
+				}
+			}
+		} while (iterable.getHasMoreItems());
 	}
 }

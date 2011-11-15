@@ -24,6 +24,9 @@ public class Messages {
 	public static String synchComplete;
 	public static String isSynchronized;
 	public static String conflict;
+	public static String updated;
+	public static String updatedBy;
+	public static String files;
 
 	public static void init() {
 		ResourceBundle rb = ResourceBundle
