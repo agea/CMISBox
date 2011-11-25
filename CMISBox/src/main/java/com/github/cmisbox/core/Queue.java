@@ -4,18 +4,18 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.DelayQueue;
 import java.util.regex.Pattern;
 
-import org.apache.chemistry.opencmis.client.api.ChangeEvent;
-import org.apache.chemistry.opencmis.client.api.ChangeEvents;
 import org.apache.chemistry.opencmis.client.api.CmisObject;
 import org.apache.chemistry.opencmis.client.api.Document;
+import org.apache.chemistry.opencmis.client.api.Folder;
 import org.apache.chemistry.opencmis.client.api.ItemIterable;
 import org.apache.chemistry.opencmis.client.api.QueryResult;
 import org.apache.chemistry.opencmis.commons.PropertyIds;
-import org.apache.chemistry.opencmis.commons.enums.ChangeType;
+import org.apache.chemistry.opencmis.commons.enums.BaseTypeId;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.Logger;
@@ -23,6 +23,8 @@ import org.apache.log4j.Logger;
 import com.github.cmisbox.persistence.Storage;
 import com.github.cmisbox.persistence.StoredItem;
 import com.github.cmisbox.remote.CMISRepository;
+import com.github.cmisbox.remote.ChangeItem;
+import com.github.cmisbox.remote.Changes;
 import com.github.cmisbox.ui.UI;
 import com.github.cmisbox.ui.UI.Status;
 
@@ -174,6 +176,21 @@ public class Queue implements Runnable {
 		}
 	}
 
+	private String resolvePath(Folder parent) throws Exception {
+		List<String> segments = new ArrayList<String>();
+		StoredItem item = Storage.getInstance().findById(parent.getId());
+		while (item == null) {
+			segments.add(parent.getName());
+			Folder ancestor = parent.getFolderParent();
+			if (ancestor == null) {
+				return null;
+			}
+			segments.add(ancestor.getName());
+		}
+
+		return "";
+	}
+
 	public void run() {
 		while (this.active) {
 			try {
@@ -199,22 +216,63 @@ public class Queue implements Runnable {
 	}
 
 	private void synchAllWatches() throws Exception {
+		Storage storage = Storage.getInstance();
+		CMISRepository cmisRepository = CMISRepository.getInstance();
 		UI ui = UI.getInstance();
+		Config config = Config.getInstance();
+
 		if (ui.isAvailable()) {
 			ui.setStatus(Status.SYNCH);
 		}
+
 		List<String[]> updates = new ArrayList<String[]>();
 
-		ChangeEvents changeEvents = CMISRepository.getInstance()
-				.getContentChanges();
-		for (ChangeEvent ce : changeEvents.getChangeEvents()) {
-			System.out.println(ce);
-			if (ce.getChangeType().equals(ChangeType.CREATED)) {
-				//
+		Changes changes = cmisRepository
+				.getContentChanges(storage.getRootIds());
+
+		LinkedHashMap<String, File> downloadList = new LinkedHashMap<String, File>();
+
+		for (ChangeItem item : changes.getEvents()) {
+			String id = "workspace://SpacesStore/" + item.getId();
+			String type = item.getT();
+			StoredItem storedItem = storage.findById(id);
+			if (type.equals("D")) {
+				if (storedItem != null) {
+					File f = new File(config.getWatchParent()
+							+ storedItem.getPath());
+					f.delete();
+					storage.delete(storedItem, true);
+				}
+			} else if (type.equals("C") || type.equals("U")) {
+				CmisObject remoteObject = cmisRepository.findObject(id);
+				if (remoteObject.getType().getBaseType().getBaseTypeId()
+						.equals(BaseTypeId.CMIS_FOLDER)) {
+					Folder folder = (Folder) remoteObject;
+					if (storedItem == null) {
+						storage.add(
+								new File(this.resolvePath(folder
+										.getFolderParent()), folder.getName()),
+								folder, false);
+					} else {
+						// check name and last modified
+						// rename it
+					}
+				} else {
+					Document document = (Document) remoteObject;
+					if (storedItem == null) {
+						downloadList.put(
+								id,
+								new File(this.resolvePath(document.getParents()
+										.get(0)), document.getName()));
+					} else {
+						// check name and last modified
+						// add to download list it
+					}
+				}
 			}
 		}
-		changeEvents.getLatestChangeLogToken();
-		CMISRepository.getInstance().updateChangeLogToken();
+
+		config.setChangeLogToken(changes.getToken());
 
 		if (ui.isAvailable()) {
 			ui.setStatus(Status.OK);

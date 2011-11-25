@@ -164,10 +164,11 @@ public class Storage {
 	}
 
 	public StoredItem findById(String id) throws Exception {
+		id = id.split(";")[0];
 		Query query = new TermQuery(new Term(Storage.FIELD_ID, id));
 		TopDocs search = this.getSearcher().search(query, 1);
 		if (search.totalHits == 0) {
-			throw new RuntimeException(id + " not found");
+			return null;
 		}
 		org.apache.lucene.document.Document d = this.reader
 				.document(search.scoreDocs[0].doc);
@@ -268,8 +269,8 @@ public class Storage {
 				Index.NOT_ANALYZED));
 		ldoc.add(new Field(Storage.FIELD_TYPE, Storage.TYPE_FILE, Store.YES,
 				Index.NOT_ANALYZED));
-		ldoc.add(new Field(Storage.FIELD_ID, document.getId(), Store.YES,
-				Index.NOT_ANALYZED));
+		ldoc.add(new Field(Storage.FIELD_ID, document.getId().split(";")[0],
+				Store.YES, Index.NOT_ANALYZED));
 		ldoc.add(new Field(Storage.FIELD_VERSION, document.getVersionLabel(),
 				Store.YES, Index.NOT_ANALYZED));
 		ldoc.add(new Field(Storage.FIELD_LOCAL_MODIFIED, DateTools
@@ -295,8 +296,8 @@ public class Storage {
 				Index.NOT_ANALYZED));
 		ldoc.add(new Field(Storage.FIELD_ROOT, "" + root, Store.YES,
 				Index.NOT_ANALYZED));
-		ldoc.add(new Field(Storage.FIELD_ID, folder.getId(), Store.YES,
-				Index.NOT_ANALYZED));
+		ldoc.add(new Field(Storage.FIELD_ID, folder.getId().split(";")[0],
+				Store.YES, Index.NOT_ANALYZED));
 		ldoc.add(new Field(Storage.FIELD_LOCAL_MODIFIED, DateTools
 				.timeToString(file.lastModified(), Resolution.MILLISECOND),
 				Store.YES, Index.NOT_ANALYZED));

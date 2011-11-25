@@ -5,14 +5,15 @@ import java.io.FileInputStream;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.apache.chemistry.opencmis.client.api.ChangeEvents;
 import org.apache.chemistry.opencmis.client.api.CmisObject;
 import org.apache.chemistry.opencmis.client.api.Document;
 import org.apache.chemistry.opencmis.client.api.Folder;
 import org.apache.chemistry.opencmis.client.api.ItemIterable;
+import org.apache.chemistry.opencmis.client.api.ObjectType;
 import org.apache.chemistry.opencmis.client.api.OperationContext;
 import org.apache.chemistry.opencmis.client.api.Property;
 import org.apache.chemistry.opencmis.client.api.QueryResult;
@@ -21,7 +22,6 @@ import org.apache.chemistry.opencmis.client.runtime.SessionFactoryImpl;
 import org.apache.chemistry.opencmis.client.util.FileUtils;
 import org.apache.chemistry.opencmis.commons.PropertyIds;
 import org.apache.chemistry.opencmis.commons.SessionParameter;
-import org.apache.chemistry.opencmis.commons.data.RepositoryInfo;
 import org.apache.chemistry.opencmis.commons.enums.BindingType;
 import org.apache.chemistry.opencmis.commons.enums.VersioningState;
 import org.apache.chemistry.opencmis.commons.impl.MimeTypes;
@@ -167,6 +167,14 @@ public class CMISRepository {
 		FileUtils.download(doc, file.getAbsolutePath());
 	}
 
+	public CmisObject findObject(String id) {
+		CmisObject object = this.session.getObject(id);
+		if (object.getType().getBaseTypeId()
+				.equals(ObjectType.DOCUMENT_BASETYPE_ID)) {
+		}
+		return object;
+	}
+
 	public TreeMap<String, String> getChildrenFolders(String id) {
 		TreeMap<String, String> res = new TreeMap<String, String>();
 		Iterator<QueryResult> i = this.session
@@ -181,12 +189,9 @@ public class CMISRepository {
 		return res;
 	}
 
-	public ChangeEvents getContentChanges() {
-		OperationContext oc = this.session.createOperationContext();
+	public Changes getContentChanges(List<String> rootIds) throws Exception {
 
-		ChangeEvents contentChanges = this.session.getContentChanges(Config
-				.getInstance().getChangeLogToken(), true, 99999);
-		return contentChanges;
+		return AlfrescoWebscripts.getChangeLog(rootIds);
 	}
 
 	public Document getDocument(String id) {
@@ -284,16 +289,6 @@ public class CMISRepository {
 		doc.refresh();
 
 		return doc;
-
-	}
-
-	public void updateChangeLogToken() {
-		RepositoryInfo ri = this.session
-				.getBinding()
-				.getRepositoryService()
-				.getRepositoryInfo(this.session.getRepositoryInfo().getId(),
-						null);
-		Config.getInstance().setChangeLogToken(ri.getLatestChangeLogToken());
 
 	}
 
