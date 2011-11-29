@@ -1,9 +1,12 @@
 package com.github.cmisbox.persistence;
 
+import java.io.File;
 import java.util.Date;
 
 import org.apache.lucene.document.DateTools;
 import org.apache.lucene.document.Fieldable;
+
+import com.github.cmisbox.core.Config;
 
 public class StoredItem {
 	private Integer docNumber;
@@ -43,6 +46,10 @@ public class StoredItem {
 		}
 	}
 
+	public String getAbsolutePath() {
+		return Config.getInstance().getWatchParent() + this.path;
+	}
+
 	public Integer getDocNumber() {
 		return this.docNumber;
 	}
@@ -53,6 +60,11 @@ public class StoredItem {
 
 	public Long getLocalModified() {
 		return this.localModified;
+	}
+
+	public String getName() {
+		String[] s = this.path.split(File.separator);
+		return s[s.length - 1];
 	}
 
 	public String getPath() {

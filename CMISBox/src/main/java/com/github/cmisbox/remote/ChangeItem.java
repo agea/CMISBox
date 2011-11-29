@@ -19,4 +19,9 @@ public class ChangeItem {
 	public void setT(String t) {
 		this.t = t;
 	}
+
+	@Override
+	public String toString() {
+		return String.format("ChangeItem(%s,%s)", this.t, this.id);
+	}
 }

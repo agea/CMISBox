@@ -163,6 +163,13 @@ public class Storage {
 		this.commit();
 	}
 
+	public void deleteById(String id) throws Exception {
+		StoredItem item = this.findById(id);
+		if (item != null) {
+			this.delete(item, true);
+		}
+	}
+
 	public StoredItem findById(String id) throws Exception {
 		id = id.split(";")[0];
 		Query query = new TermQuery(new Term(Storage.FIELD_ID, id));
@@ -313,8 +320,8 @@ public class Storage {
 
 	public void localUpdate(StoredItem item, File f, CmisObject obj)
 			throws Exception {
+		this.delete(item, false);
 		if (f.isFile()) {
-			this.delete(item, false);
 			this.indexDocument(f, (Document) obj);
 		} else {
 			for (StoredItem si : this.findByPath(item.getPath() + "*")) {

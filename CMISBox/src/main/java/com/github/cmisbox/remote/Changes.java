@@ -22,4 +22,9 @@ public class Changes {
 	public void setToken(String token) {
 		this.token = token;
 	}
+
+	@Override
+	public String toString() {
+		return String.format("Changes(%s,%s)", this.token, this.events);
+	}
 }

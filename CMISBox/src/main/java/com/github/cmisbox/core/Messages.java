@@ -27,6 +27,9 @@ public class Messages {
 	public static String updated;
 	public static String updatedBy;
 	public static String files;
+	public static String renameError;
+	public static String downloading;
+	public static String errorDownloading;
 
 	public static void init() {
 		ResourceBundle rb = ResourceBundle

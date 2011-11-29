@@ -2,23 +2,19 @@ package com.github.cmisbox.core;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.concurrent.DelayQueue;
 import java.util.regex.Pattern;
 
 import org.apache.chemistry.opencmis.client.api.CmisObject;
 import org.apache.chemistry.opencmis.client.api.Document;
 import org.apache.chemistry.opencmis.client.api.Folder;
-import org.apache.chemistry.opencmis.client.api.ItemIterable;
-import org.apache.chemistry.opencmis.client.api.QueryResult;
-import org.apache.chemistry.opencmis.commons.PropertyIds;
 import org.apache.chemistry.opencmis.commons.enums.BaseTypeId;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.log4j.Logger;
 
 import com.github.cmisbox.persistence.Storage;
 import com.github.cmisbox.persistence.StoredItem;
@@ -130,6 +126,13 @@ public class Queue implements Runnable {
 
 			File f = new File(event.getFullFilename());
 			if (event.isCreate()) {
+				StoredItem item = this.getSingleItem(event.getLocalPath());
+
+				if ((item != null)
+						&& (item.getLocalModified().longValue() >= f
+								.lastModified())) {
+					return;
+				}
 				String parent = f.getParent().substring(
 						Config.getInstance().getWatchParent().length());
 
@@ -169,6 +172,9 @@ public class Queue implements Runnable {
 
 		} catch (Exception e) {
 			log.error(e);
+			if (log.isDebugEnabled()) {
+				e.printStackTrace();
+			}
 			if (UI.getInstance().isAvailable()) {
 				UI.getInstance().notify(e.toString());
 				UI.getInstance().setStatus(Status.KO);
@@ -177,18 +183,22 @@ public class Queue implements Runnable {
 	}
 
 	private String resolvePath(Folder parent) throws Exception {
-		List<String> segments = new ArrayList<String>();
 		StoredItem item = Storage.getInstance().findById(parent.getId());
+		String path = File.separator + parent.getName();
 		while (item == null) {
-			segments.add(parent.getName());
 			Folder ancestor = parent.getFolderParent();
 			if (ancestor == null) {
 				return null;
 			}
-			segments.add(ancestor.getName());
+			item = Storage.getInstance().findById(ancestor.getId());
+			if (item == null) {
+				path = File.separator + ancestor.getName() + path;
+			} else {
+				path = item.getPath() + path;
+			}
 		}
 
-		return "";
+		return Config.getInstance().getWatchParent() + path;
 	}
 
 	public void run() {
@@ -232,47 +242,123 @@ public class Queue implements Runnable {
 
 		LinkedHashMap<String, File> downloadList = new LinkedHashMap<String, File>();
 
+		boolean errors = false;
+
 		for (ChangeItem item : changes.getEvents()) {
-			String id = "workspace://SpacesStore/" + item.getId();
-			String type = item.getT();
-			StoredItem storedItem = storage.findById(id);
-			if (type.equals("D")) {
-				if (storedItem != null) {
-					File f = new File(config.getWatchParent()
-							+ storedItem.getPath());
-					f.delete();
-					storage.delete(storedItem, true);
+			try {
+				if (item == null) {
+					continue;
 				}
-			} else if (type.equals("C") || type.equals("U")) {
-				CmisObject remoteObject = cmisRepository.findObject(id);
-				if (remoteObject.getType().getBaseType().getBaseTypeId()
-						.equals(BaseTypeId.CMIS_FOLDER)) {
-					Folder folder = (Folder) remoteObject;
-					if (storedItem == null) {
-						storage.add(
-								new File(this.resolvePath(folder
-										.getFolderParent()), folder.getName()),
-								folder, false);
-					} else {
-						// check name and last modified
-						// rename it
+				String id = "workspace://SpacesStore/" + item.getId();
+				String type = item.getT();
+				StoredItem storedItem = storage.findById(id);
+				if (type.equals("D")) {
+					if (storedItem != null) {
+						File f = new File(config.getWatchParent()
+								+ storedItem.getPath());
+						f.delete();
+						storage.delete(storedItem, true);
 					}
-				} else {
-					Document document = (Document) remoteObject;
-					if (storedItem == null) {
-						downloadList.put(
-								id,
-								new File(this.resolvePath(document.getParents()
-										.get(0)), document.getName()));
+				} else if (type.equals("C") || type.equals("U")) {
+					CmisObject remoteObject = cmisRepository.findObject(id);
+					if (remoteObject.getType().getBaseTypeId()
+							.equals(BaseTypeId.CMIS_FOLDER)) {
+						Folder folder = (Folder) remoteObject;
+						File newFile = new File(this.resolvePath(folder
+								.getFolderParent()), folder.getName());
+						if (storedItem == null) {
+							storage.add(newFile, folder, false);
+						} else {
+							if ((folder.getLastModificationDate()
+									.getTimeInMillis() > storedItem
+									.getRemoteModified())
+									&& !storedItem.getName().equals(
+											folder.getName())) {
+								if (new File(storedItem.getAbsolutePath())
+										.renameTo(newFile)) {
+									storage.localUpdate(storedItem, newFile,
+											folder);
+								} else {
+									if (ui.isAvailable()) {
+										ui.notify(Messages.renameError + " "
+												+ storedItem.getAbsolutePath()
+												+ " -> "
+												+ newFile.getAbsolutePath());
+									}
+									this.log.error("Unable to rename "
+											+ storedItem.getAbsolutePath()
+											+ " to "
+											+ newFile.getAbsolutePath());
+
+								}
+							}
+						}
 					} else {
-						// check name and last modified
-						// add to download list it
+						Document document = (Document) remoteObject;
+						this.log.debug("preparing to update or create "
+								+ document.getName());
+						File newFile = new File(this.resolvePath(document
+								.getParents().get(0)), document.getName());
+						if (storedItem == null) {
+							downloadList.put(id, newFile);
+						} else {
+							File current = new File(
+									storedItem.getAbsolutePath());
+							if (storedItem.getLocalModified() < document
+									.getLastModificationDate()
+									.getTimeInMillis()) {
+								if (!current.getAbsolutePath().equals(
+										newFile.getAbsolutePath())) {
+									if (!current.renameTo(newFile)) {
+										if (ui.isAvailable()) {
+											ui.notify(Messages.renameError
+													+ " "
+													+ storedItem
+															.getAbsolutePath()
+													+ " -> "
+													+ newFile.getAbsolutePath());
+										}
+										this.log.error("Unable to rename "
+												+ storedItem.getAbsolutePath()
+												+ " to "
+												+ newFile.getAbsolutePath());
+									}
+								}
+								downloadList.put(id, newFile);
+							}
+						}
 					}
+				}
+			} catch (Exception e1) {
+				errors = true;
+				this.log.error("Error getting remote chahges for " + item, e1);
+			}
+		}
+
+		if (ui.isAvailable() && (downloadList.size() > 0)) {
+			ui.notify(Messages.downloading + " " + downloadList.size() + " "
+					+ Messages.files);
+		}
+		for (Entry<String, File> e : downloadList.entrySet()) {
+			try {
+				storage.deleteById(e.getKey());
+				e.getValue().delete();
+				cmisRepository.download(cmisRepository.getDocument(e.getKey()),
+						e.getValue());
+				storage.add(e.getValue(),
+						cmisRepository.getDocument(e.getKey()));
+			} catch (Exception e1) {
+				errors = true;
+				this.log.error("Error downloading " + e, e1);
+				if (ui.isAvailable()) {
+					ui.notify(Messages.errorDownloading + " " + e);
 				}
 			}
 		}
 
-		config.setChangeLogToken(changes.getToken());
+		if (!errors) {
+			config.setChangeLogToken(changes.getToken());
+		}
 
 		if (ui.isAvailable()) {
 			ui.setStatus(Status.OK);
@@ -285,48 +371,5 @@ public class Queue implements Runnable {
 			}
 
 		}
-	}
-
-	private void updateLocalChanges(List<String[]> updates,
-			ItemIterable<QueryResult> iterable) throws Exception {
-		do {
-			for (QueryResult queryResult : iterable) {
-				String objectId = queryResult
-						.getPropertyValueById(PropertyIds.OBJECT_ID);
-				String name = queryResult
-						.getPropertyValueById(PropertyIds.NAME);
-				GregorianCalendar lastModificationDate = queryResult
-						.getPropertyValueById(PropertyIds.LAST_MODIFICATION_DATE);
-
-				StoredItem item = Storage.getInstance().findById(objectId);
-				if (item.getRemoteModified().longValue() >= lastModificationDate
-						.getTimeInMillis()) {
-					break;
-				} else {
-					File oldFile = new File(Config.getInstance()
-							.getWatchParent(), item.getPath());
-					if (item.getType().equals(Storage.TYPE_FOLDER)) {
-						oldFile.renameTo(new File(oldFile.getParent(), name));
-					} else {
-						oldFile.delete();
-						Document doc = CMISRepository.getInstance()
-								.getDocument(objectId);
-						File file = new File(oldFile.getParent(), name);
-						CMISRepository.getInstance().download(doc, file);
-						Storage.getInstance().delete(item, false);
-						Storage.getInstance().add(file, doc);
-						updates.add(new String[] {
-								file.getAbsolutePath().substring(
-										Config.getInstance().getWatchParent()
-												.length()),
-								doc.getLastModifiedBy() });
-						Logger.getLogger(this.getClass()).debug(
-								"Updated remote changes: "
-										+ file.getAbsolutePath());
-					}
-
-				}
-			}
-		} while (iterable.getHasMoreItems());
 	}
 }
