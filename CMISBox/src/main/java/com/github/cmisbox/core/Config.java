@@ -189,6 +189,10 @@ public class Config {
 	}
 
 	public void setChangeLogToken(String token) {
+		try {
+			token = (Integer.parseInt(token) + 1) + "";
+		} catch (Exception e) {
+		}
 		this.properties.setProperty(Config.CHANGE_LOG_TOKEN, token);
 		this.saveProperties();
 	}

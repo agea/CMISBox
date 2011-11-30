@@ -261,6 +261,7 @@ public class Queue implements Runnable {
 					}
 				} else if (type.equals("C") || type.equals("U")) {
 					CmisObject remoteObject = cmisRepository.findObject(id);
+					remoteObject.refresh();
 					if (remoteObject.getType().getBaseTypeId()
 							.equals(BaseTypeId.CMIS_FOLDER)) {
 						Folder folder = (Folder) remoteObject;

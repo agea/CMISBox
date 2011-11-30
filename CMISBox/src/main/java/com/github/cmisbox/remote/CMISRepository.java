@@ -13,7 +13,6 @@ import org.apache.chemistry.opencmis.client.api.CmisObject;
 import org.apache.chemistry.opencmis.client.api.Document;
 import org.apache.chemistry.opencmis.client.api.Folder;
 import org.apache.chemistry.opencmis.client.api.ItemIterable;
-import org.apache.chemistry.opencmis.client.api.ObjectType;
 import org.apache.chemistry.opencmis.client.api.OperationContext;
 import org.apache.chemistry.opencmis.client.api.Property;
 import org.apache.chemistry.opencmis.client.api.QueryResult;
@@ -82,6 +81,10 @@ public class CMISRepository {
 		parameter.put(SessionParameter.BINDING_TYPE,
 				BindingType.ATOMPUB.value());
 
+		parameter.put(SessionParameter.CACHE_TTL_OBJECTS, "5000");
+		parameter.put(SessionParameter.CONNECT_TIMEOUT, "10000");
+		parameter.put(SessionParameter.COMPRESSION, "true");
+
 		// parameter.put(SessionParameter.BINDING_TYPE,
 		// BindingType.WEBSERVICES.value());
 		// parameter.put(SessionParameter.WEBSERVICES_ACL_SERVICE, url
@@ -110,7 +113,6 @@ public class CMISRepository {
 		parameter.put(SessionParameter.REPOSITORY_ID, r.getId());
 
 		CMISRepository.instance.session = f.createSession(parameter);
-
 	}
 
 	public static CMISRepository getInstance() {
@@ -169,9 +171,6 @@ public class CMISRepository {
 
 	public CmisObject findObject(String id) {
 		CmisObject object = this.session.getObject(id);
-		if (object.getType().getBaseTypeId()
-				.equals(ObjectType.DOCUMENT_BASETYPE_ID)) {
-		}
 		return object;
 	}
 
