@@ -27,8 +27,9 @@
  *    
  ******************************************************************************
  * Author : Omry Yadan
+ ******************************************************************************
+ * Edited: 12 September 2011 - Andrea Agili
  ******************************************************************************/
-
 package net.contentobjects.jnotify.linux;
 
 import java.io.File;
@@ -345,7 +346,7 @@ public class JNotifyAdapterLinux implements IJNotify {
 		String path;
 		if (wdata != null) {
 			path = wdata._path;
-			if (path != null && name != "") {
+			if ((path != null) && (name != "")) {
 				path += File.separator + name;
 			}
 		} else {
@@ -426,8 +427,8 @@ public class JNotifyAdapterLinux implements IJNotify {
 					watchData.notifyFileDeleted(name);
 				} else if ((linuxMask & JNotify_linux.IN_DELETE) != 0) {
 					watchData.notifyFileDeleted(name);
-				} else if ((linuxMask & JNotify_linux.IN_ATTRIB) != 0
-						|| (linuxMask & JNotify_linux.IN_MODIFY) != 0) {
+				} else if (((linuxMask & JNotify_linux.IN_ATTRIB) != 0)
+						|| ((linuxMask & JNotify_linux.IN_MODIFY) != 0)) {
 					watchData.notifyFileModified(name);
 				} else if ((linuxMask & JNotify_linux.IN_MOVED_FROM) != 0) {
 					watchData.renaming(cookie, name);
@@ -461,7 +462,7 @@ public class JNotifyAdapterLinux implements IJNotify {
 		// even if
 		// the user is not interester in creation events).
 		if (fireCreatedEvents
-				&& (parentWatch._mask & JNotify.FILE_CREATED) != 0) {
+				&& ((parentWatch._mask & JNotify.FILE_CREATED) != 0)) {
 			String name = root.toString().substring(
 					parentWatch._path.length() + 1);
 			parentWatch.notifyFileCreated(name);
