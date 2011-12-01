@@ -1,0 +1,7 @@
+<webscript>
+  <shortname>CMISBoxChanges</shortname>
+  <description>CMISBox change log filter</description>
+  <url>/cmisbox/changes?id={id}&amp;token={token}</url>
+  <format default="json">argument</format>
+  <authentication>user</authentication>
+</webscript>
