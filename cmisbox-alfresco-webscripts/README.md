@@ -12,5 +12,12 @@ Every local change you make (create, update rename or delete a file) is reflecte
 remote folder and vice versa
 
 
-CMISBox Client
---------------
+Alfresco webscripts
+-------------------
+To install the webscripts in your alfresco installation drop the jar
+
+  alfresco.webscripts-latest.jar
+  
+in ALFRESCO_HOME/tomcat/shared/lib
+
+(you may need to create 'lib' the folder)
