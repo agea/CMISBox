@@ -21,3 +21,7 @@ To install the webscripts in your alfresco installation drop the jar
 in ALFRESCO_HOME/tomcat/shared/lib
 
 (you may need to create 'lib' the folder)
+
+Remember to edit alfresco.global.properties file adding those lines:
+audit.enabled=true
+audit.cmischangelog.enabled=true

@@ -206,8 +206,8 @@ public class Queue implements Runnable {
 	private String resolvePath(Folder parent) throws Exception {
 		StoredItem item = Storage.getInstance().findById(parent.getId());
 		String path = File.separator + parent.getName();
+		Folder ancestor = parent.getFolderParent();
 		while (item == null) {
-			Folder ancestor = parent.getFolderParent();
 			if (ancestor == null) {
 				return null;
 			}
@@ -217,6 +217,7 @@ public class Queue implements Runnable {
 			} else {
 				path = item.getPath() + path;
 			}
+			ancestor = ancestor.getFolderParent();
 		}
 
 		return Config.getInstance().getWatchParent() + path;
